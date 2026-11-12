@@ -1,0 +1,2934 @@
+<!DOCTYPE html>
+<html lang="ru" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>PHILO ARENA v7.0 // God Tier Edition</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Облачный WebSocket Relay (MQTT over WSS) -->
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <!-- JSZip для чтения презентаций PowerPoint (.pptx) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <!-- PDF.js для чтения презентаций (.pdf) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <!-- Локальный генератор QR-кодов (без внешних зависающих картинок!) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=Outfit:wght@300;400;500;600;700;800;900&family=Syne:wght@700;800;900&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Outfit', 'sans-serif'],
+            display: ['Syne', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            obsidian: '#040308',
+            dragonViolet: '#9d4edd',
+            dragonNeon: '#c77dff',
+            toxicLime: '#22c55e',
+            neonGold: '#eab308',
+            crimson: '#ff2e54'
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    :root {
+      --theme-neon: #a855f7;
+      --theme-secondary: #22c55e;
+      --theme-glow: rgba(168, 85, 247, 0.55);
+      --bass-scale: 1;
+      --bass-glow-px: 16px;
+      --bass-eye-opacity: 0.75;
+    }
+
+    body {
+      background-color: #040308;
+      color: #f8fafc;
+      overflow-x: hidden;
+      font-family: 'Outfit', sans-serif;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .cyber-grid-perspective {
+      background-size: 52px 52px, 18px 18px;
+      background-image:
+        linear-gradient(to right, rgba(168, 85, 247, 0.075) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(34, 197, 94, 0.05) 1px, transparent 1px),
+        repeating-linear-gradient(45deg, rgba(192, 132, 252, 0.03) 0px, rgba(192, 132, 252, 0.03) 1px, transparent 1px, transparent 12px);
+      mask-image: radial-gradient(ellipse at 50% 45%, black 35%, transparent 92%);
+      -webkit-mask-image: radial-gradient(ellipse at 50% 45%, black 35%, transparent 92%);
+    }
+
+    .glass-panel {
+      background: linear-gradient(135deg, rgba(19, 12, 36, 0.88) 0%, rgba(8, 5, 17, 0.95) 100%);
+      backdrop-filter: blur(22px);
+      -webkit-backdrop-filter: blur(22px);
+      border: 1px solid color-mix(in srgb, var(--theme-neon) 45%, transparent);
+      box-shadow: 0 20px 55px rgba(0, 0, 0, 0.82), 0 0 35px color-mix(in srgb, var(--theme-neon) 16%, transparent), inset 0 1px 1px rgba(255, 255, 255, 0.09);
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .theme-neon-text { color: var(--theme-neon); }
+    .theme-neon-bg { background-color: var(--theme-neon); }
+    .theme-neon-border { border-color: var(--theme-neon) !important; }
+    .theme-neon-shadow { box-shadow: 0 0 30px var(--theme-glow); }
+
+    .cta-lime-glow {
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(135deg, #22c55e 0%, #4ade80 50%, #16a34a 100%);
+      box-shadow: 0 0 32px rgba(34, 197, 94, 0.55), inset 0 1px 2px rgba(255, 255, 255, 0.45);
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .cta-lime-glow:hover {
+      transform: translateY(-2px) scale(1.015);
+      box-shadow: 0 0 48px rgba(34, 197, 94, 0.85), inset 0 1px 2px rgba(255, 255, 255, 0.65);
+    }
+    .cta-lime-glow::after, .cta-violet-glow::after {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -120%;
+      width: 65%;
+      height: 200%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45), transparent);
+      transform: rotate(25deg);
+      transition: left 0.65s ease;
+      pointer-events: none;
+    }
+    .cta-lime-glow:hover::after, .cta-violet-glow:hover::after { left: 140%; }
+
+    .cta-violet-glow {
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(135deg, var(--theme-neon) 0%, #c026d3 55%, #4f46e5 100%);
+      box-shadow: 0 0 34px var(--theme-glow), inset 0 1px 2px rgba(255, 255, 255, 0.35);
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .cta-violet-glow:hover {
+      transform: translateY(-2px) scale(1.015);
+      box-shadow: 0 0 52px var(--theme-glow), inset 0 1px 2px rgba(255, 255, 255, 0.55);
+    }
+
+    .dragon-glow-filter {
+      filter:
+        drop-shadow(0 0 var(--bass-glow-px) var(--theme-neon))
+        drop-shadow(0 0 calc(var(--bass-glow-px) * 1.9) rgba(34, 197, 94, 0.38));
+      transform: scale(var(--bass-scale));
+      transition: transform 0.06s ease-out, filter 0.06s ease-out;
+    }
+    .dragon-eye-pulse { opacity: var(--bass-eye-opacity); transition: opacity 0.05s ease-out; }
+    .dragon-blend-screen { mix-blend-mode: screen; }
+
+    @keyframes floatLevitate {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-10px); }
+    }
+    .animate-levitate-left { animation: floatLevitate 6s ease-in-out infinite; }
+    .animate-levitate-right { animation: floatLevitate 6s ease-in-out infinite 3s; }
+
+    @keyframes soundWavePulse {
+      0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); transform: scale(1); }
+      50% { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); transform: scale(1.05); }
+      100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); transform: scale(1); }
+    }
+    .sound-active-btn { animation: soundWavePulse 1.3s infinite; }
+
+    /* Карточки сетки */
+    .draft-card {
+      min-height: 64px;
+      border-radius: 14px;
+      background: linear-gradient(160deg, rgba(28, 15, 50, 0.92), rgba(9, 6, 18, 0.96));
+      border: 1px solid color-mix(in srgb, var(--theme-neon) 42%, transparent);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.16s ease;
+      padding: 4px 2px;
+    }
+    .draft-card:active, .draft-card:hover:not(.answered) {
+      transform: translateY(-3px) scale(1.03);
+      border-color: var(--theme-secondary);
+      box-shadow: 0 0 20px rgba(34, 197, 94, 0.45);
+    }
+    .draft-card.owned-me {
+      border-color: #22c55e;
+      background: linear-gradient(160deg, rgba(34, 197, 94, 0.28), rgba(14, 10, 24, 0.95));
+      box-shadow: 0 0 15px rgba(34, 197, 94, 0.3);
+    }
+    .draft-card.owned-other {
+      border-color: var(--theme-neon);
+      background: linear-gradient(160deg, color-mix(in srgb, var(--theme-neon) 25%, transparent), rgba(14, 10, 24, 0.95));
+    }
+    .draft-card.answered { opacity: 0.2; pointer-events: none; }
+
+    .blitz-arena {
+      border-color: #ff2e54 !important;
+      animation: pulseCrimson 0.6s infinite alternate;
+    }
+    @keyframes pulseCrimson {
+      from { box-shadow: 0 0 18px rgba(255, 46, 84, 0.25); }
+      to { box-shadow: 0 0 55px rgba(255, 46, 84, 0.9); }
+    }
+
+    /* Кибер-Подиум нового поколения */
+    .podium-pillar-1 {
+      background: linear-gradient(180deg, rgba(234, 179, 8, 0.35) 0%, rgba(15, 10, 28, 0.96) 100%);
+      border: 2px solid #eab308;
+      box-shadow: 0 0 50px rgba(234, 179, 8, 0.4), inset 0 0 25px rgba(234, 179, 8, 0.25);
+    }
+    .podium-pillar-2 {
+      background: linear-gradient(180deg, rgba(192, 132, 252, 0.3) 0%, rgba(15, 10, 28, 0.96) 100%);
+      border: 2px solid #c084fc;
+      box-shadow: 0 0 35px rgba(192, 132, 252, 0.3);
+    }
+    .podium-pillar-3 {
+      background: linear-gradient(180deg, rgba(34, 197, 94, 0.28) 0%, rgba(15, 10, 28, 0.96) 100%);
+      border: 2px solid #22c55e;
+      box-shadow: 0 0 35px rgba(34, 197, 94, 0.25);
+    }
+
+    .reel {
+      width: 92px; height: 112px; border-radius: 20px;
+      background: rgba(15, 10, 28, 0.95);
+      border: 2px solid var(--theme-neon);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 46px;
+      box-shadow: 0 0 30px var(--theme-glow);
+    }
+    .reel.done {
+      border-color: #22c55e;
+      box-shadow: 0 0 40px rgba(34, 197, 94, 0.7);
+      animation: pop 0.35s;
+    }
+    @keyframes pop { 50% { transform: scale(1.16); } }
+
+    input[type="range"].vol-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      height: 6px;
+      border-radius: 99px;
+      background: rgba(168, 85, 247, 0.3);
+      outline: none;
+    }
+    input[type="range"].vol-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #22c55e;
+      cursor: pointer;
+      box-shadow: 0 0 10px #22c55e;
+    }
+
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: #040308; }
+    ::-webkit-scrollbar-thumb { background: #4c1d95; border-radius: 3px; }
+  </style>
+</head>
+<body class="min-h-screen relative overflow-x-hidden flex flex-col justify-between">
+
+  <!-- Перспективная сетка и ореолы драконов -->
+  <div class="fixed inset-0 cyber-grid-perspective pointer-events-none z-0"></div>
+  <div class="fixed top-[12%] -left-16 w-[340px] sm:w-[460px] h-[520px] bg-purple-700/25 rounded-full blur-[95px] pointer-events-none z-0"></div>
+  <div class="fixed bottom-[8%] left-[2%] w-[260px] h-[260px] bg-emerald-500/15 rounded-full blur-[85px] pointer-events-none z-0"></div>
+  <div class="fixed top-[12%] -right-16 w-[340px] sm:w-[460px] h-[520px] bg-purple-700/25 rounded-full blur-[95px] pointer-events-none z-0"></div>
+  <div class="fixed bottom-[8%] right-[2%] w-[260px] h-[260px] bg-emerald-500/15 rounded-full blur-[85px] pointer-events-none z-0"></div>
+
+  <!-- Искры и конфетти для подиума -->
+  <canvas id="embersCanvas" class="fixed inset-0 pointer-events-none z-0"></canvas>
+
+  <!-- ==================== ДВОЙНЫЕ ДРАКОНЫ ПО БОКАМ ==================== -->
+  <div id="dragonLeftContainer" class="fixed -left-20 sm:-left-10 lg:left-0 top-[10%] bottom-0 w-[180px] sm:w-[280px] md:w-[360px] lg:w-[440px] pointer-events-none z-10 animate-levitate-left opacity-35 sm:opacity-80 lg:opacity-95">
+    <img id="customDragonImgLeft" class="w-full h-full object-cover object-left dragon-glow-filter dragon-blend-screen hidden" alt="Dragon Left">
+    <svg id="defaultDragonSvgLeft" viewBox="0 0 520 960" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full dragon-glow-filter">
+      <defs>
+        <pattern id="tattooScalePattern" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(18)">
+          <rect width="20" height="20" fill="#05030a"/>
+          <path d="M 0 10 Q 10 22 20 10 M -10 0 Q 0 12 10 0 M 10 0 Q 20 12 30 0" stroke="#b56bff" stroke-width="2.1" fill="#090514"/>
+          <path d="M 3 10 Q 10 17 17 10" stroke="#4ade80" stroke-width="0.65" fill="none" opacity="0.55"/>
+        </pattern>
+        <linearGradient id="lavenderFlameGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#ffffff" />
+          <stop offset="30%" stop-color="#e0aaff" />
+          <stop offset="68%" stop-color="#9d4edd" />
+          <stop offset="100%" stop-color="#22c55e" />
+        </linearGradient>
+        <radialGradient id="pearlOrbGlow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#ffffff" />
+          <stop offset="30%" stop-color="#4ade80" />
+          <stop offset="65%" stop-color="#9d4edd" />
+          <stop offset="100%" stop-color="transparent" />
+        </radialGradient>
+      </defs>
+
+      <g id="twinDragonArtwork">
+        <g fill="url(#lavenderFlameGrad)">
+          <path d="M 110 120 C 165 75, 245 75, 310 115 C 255 110, 190 115, 130 140 Z" />
+          <path d="M 195 95 C 255 60, 325 75, 370 130 C 315 110, 260 108, 210 120 Z" />
+          <path d="M 85 230 C 25 190, 15 130, 50 95 C 50 145, 70 185, 110 210 Z" />
+          <path d="M 75 335 C 15 310, 5 250, 40 210 C 42 255, 65 290, 105 315 Z" />
+          <path d="M 90 430 C 25 415, 5 370, 30 330 C 38 375, 65 398, 110 412 Z" />
+          <path d="M 355 210 C 405 165, 435 195, 420 250 C 405 220, 385 215, 355 225 Z" />
+          <path d="M 295 450 C 355 420, 385 370, 365 320 C 355 365, 325 405, 275 430 Z" />
+          <path d="M 125 655 C 65 635, 45 580, 75 535 C 80 580, 105 615, 145 635 Z" />
+          <path d="M 155 735 C 95 725, 75 680, 100 640 C 105 680, 130 705, 175 720 Z" />
+          <path d="M 260 795 C 235 865, 260 925, 315 950 C 280 905, 275 850, 285 795 Z" />
+          <path d="M 275 790 C 285 860, 330 915, 385 930 C 340 885, 310 840, 298 785 Z" />
+          <path d="M 245 795 C 200 850, 200 905, 245 945 C 228 895, 232 845, 265 795 Z" />
+          <path d="M 290 785 C 325 835, 375 870, 415 865 C 375 840, 335 815, 305 780 Z" />
+        </g>
+
+        <path d="M 275 805 C 195 765, 115 690, 160 605 C 205 520, 335 505, 295 405 C 255 305, 85 335, 110 205 C 130 100, 305 105, 340 200 C 360 255, 305 305, 255 285"
+              stroke="#d8b4fe" stroke-width="60" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="M 275 805 C 195 765, 115 690, 160 605 C 205 520, 335 505, 295 405 C 255 305, 85 335, 110 205 C 130 100, 305 105, 340 200 C 360 255, 305 305, 255 285"
+              stroke="url(#tattooScalePattern)" stroke-width="50" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="M 275 805 C 195 765, 115 690, 160 605 C 205 520, 335 505, 295 405 C 255 305, 85 335, 110 205 C 130 100, 305 105, 340 200"
+              stroke="#86efac" stroke-width="7" stroke-linecap="round" stroke-dasharray="9 13" opacity="0.8" />
+
+        <g stroke="#d8b4fe" stroke-width="3.5">
+          <path d="M 225 180 Q 195 220 220 245 Q 255 230 250 190 Z" fill="url(#tattooScalePattern)" />
+          <path d="M 220 245 L 195 258 M 220 245 L 212 268 M 228 245 L 235 268" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round"/>
+        </g>
+
+        <g stroke="#d8b4fe" stroke-width="3.5">
+          <path d="M 335 340 Q 405 345 445 380 Q 405 408 335 372 Z" fill="url(#tattooScalePattern)" />
+          <path d="M 445 380 L 482 358 M 445 380 L 490 385 M 445 380 L 478 412 M 430 392 L 415 422" stroke="#ffffff" stroke-width="5" stroke-linecap="round"/>
+        </g>
+
+        <g stroke="#d8b4fe" stroke-width="3.5">
+          <path d="M 160 445 Q 95 455 58 495 Q 98 518 168 475 Z" fill="url(#tattooScalePattern)" />
+          <path d="M 58 495 L 22 472 M 58 495 L 18 502 M 58 495 L 35 528 M 75 508 L 92 535" stroke="#ffffff" stroke-width="5" stroke-linecap="round"/>
+        </g>
+
+        <g>
+          <circle cx="360" cy="635" r="56" fill="url(#pearlOrbGlow)" class="dragon-eye-pulse" />
+          <path d="M 315 615 C 295 570, 325 535, 345 565 C 360 520, 395 535, 390 575 C 415 555, 435 595, 405 625 C 425 655, 390 690, 360 675 C 330 690, 295 660, 315 615 Z"
+                fill="url(#lavenderFlameGrad)" opacity="0.92" />
+          <path d="M 285 545 Q 345 575 360 618" stroke="url(#tattooScalePattern)" stroke-width="24" stroke-linecap="round"/>
+          <path d="M 285 545 Q 345 575 360 618" stroke="#e0aaff" stroke-width="3" fill="none"/>
+          <path d="M 355 605 L 325 630 M 362 608 L 358 648 M 370 605 L 392 635" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round"/>
+          <circle cx="360" cy="635" r="18" fill="#22c55e" stroke="#ffffff" stroke-width="2.5"/>
+          <circle cx="360" cy="635" r="7" fill="#ffffff" />
+        </g>
+
+        <g transform="translate(215, 225)">
+          <path d="M 35 20 C 90 -35, 165 -45, 215 -10 C 165 10, 130 32, 80 48 Z" fill="url(#lavenderFlameGrad)" />
+          <path d="M 45 45 C 115 10, 185 15, 225 50 C 175 55, 130 65, 70 68 Z" fill="url(#lavenderFlameGrad)" />
+          <path d="M 35 18 C 65 -35, 115 -70, 150 -80 C 125 -35, 90 5, 55 30 Z" fill="#f3e8ff" stroke="#9d4edd" stroke-width="2.5"/>
+          <path d="M 25 32 C 65 15, 120 18, 148 38 C 115 54, 70 54, 30 48 Z" fill="#0d061a" stroke="#e0aaff" stroke-width="3.2"/>
+          <path d="M 35 54 C 68 65, 112 72, 135 90 C 95 96, 55 82, 28 65 Z" fill="#0d061a" stroke="#e0aaff" stroke-width="3.2"/>
+          <polygon points="118,44 124,58 130,44" fill="#ffffff"/>
+          <polygon points="95,45 100,56 106,45" fill="#ffffff"/>
+          <polygon points="105,76 111,62 117,78" fill="#ffffff"/>
+          <path d="M 125 28 C 175 -20, 215 45, 175 95" stroke="#86efac" stroke-width="3.2" fill="none" stroke-linecap="round"/>
+          <circle cx="82" cy="34" r="16" fill="url(#pearlOrbGlow)" class="dragon-eye-pulse"/>
+          <circle cx="82" cy="34" r="5.5" fill="#ffffff"/>
+        </g>
+      </g>
+    </svg>
+  </div>
+
+  <div id="dragonRightContainer" class="fixed -right-20 sm:-right-10 lg:right-0 top-[10%] bottom-0 w-[180px] sm:w-[280px] md:w-[360px] lg:w-[440px] pointer-events-none z-10 animate-levitate-right opacity-35 sm:opacity-80 lg:opacity-95">
+    <img id="customDragonImgRight" class="w-full h-full object-cover object-right dragon-glow-filter dragon-blend-screen hidden" alt="Dragon Right">
+    <svg id="defaultDragonSvgRight" viewBox="0 0 520 960" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full dragon-glow-filter transform scale-x-[-1]">
+      <use href="#twinDragonArtwork" />
+    </svg>
+  </div>
+
+  <!-- ==================== ШАПКА САЙТА ==================== -->
+  <header class="relative z-30 w-full px-2.5 sm:px-6 py-2.5 border-b border-purple-900/40 backdrop-blur-xl bg-obsidian/90">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
+      <!-- Щит PA -->
+      <div class="flex items-center gap-2.5 cursor-pointer group" onclick="app.setView('home')">
+        <div class="relative w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center">
+          <img id="customLogoImgHeader" class="w-12 h-12 rounded-xl object-cover border border-toxicLime/60 shadow-[0_0_20px_rgba(34,197,94,0.45)] hidden" alt="PA Logo">
+          <svg id="paShieldSvgHeader" viewBox="0 0 100 112" class="w-11 h-11 sm:w-12 sm:h-12 drop-shadow-[0_0_14px_rgba(168,85,247,0.85)] group-hover:scale-105 transition-transform">
+            <defs>
+              <linearGradient id="paShieldBorder" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#c084fc"/>
+                <stop offset="50%" stop-color="#a855f7"/>
+                <stop offset="100%" stop-color="#22c55e"/>
+              </linearGradient>
+              <linearGradient id="paTextP" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#f3e8ff"/>
+                <stop offset="100%" stop-color="#9333ea"/>
+              </linearGradient>
+              <linearGradient id="paTextA" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#bbf7d0"/>
+                <stop offset="100%" stop-color="#16a34a"/>
+              </linearGradient>
+            </defs>
+            <path d="M50 4 L92 18 L92 54 C92 80 73 98 50 108 C27 98 8 80 8 54 L8 18 Z" fill="#0c0718" stroke="url(#paShieldBorder)" stroke-width="5.5"/>
+            <path d="M50 11 L85 23 L85 53 C85 75 69 91 50 100 C31 91 15 75 15 53 L15 23 Z" fill="#130b24" stroke="rgba(255,255,255,0.18)" stroke-width="1.5"/>
+            <path d="M24 34 H50 C57 34 60 39 60 45 C60 51 56 56 49 56 H35 V74 H24 Z M35 43 V48 H47 C49 48 50 47 50 45.5 C50 44 49 43 47 43 Z" fill="url(#paTextP)"/>
+            <path d="M63 34 L80 74 H68 L65 65 H51 L55 56 H62 L57 43 Z" fill="url(#paTextA)"/>
+          </svg>
+          <span class="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-toxicLime opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-toxicLime"></span>
+          </span>
+        </div>
+
+        <div>
+          <div class="flex items-center gap-1.5">
+            <h1 class="text-base sm:text-xl font-black font-display tracking-wider bg-gradient-to-r from-purple-200 via-white to-toxicLime bg-clip-text text-transparent">
+              PHILO ARENA
+            </h1>
+            <span class="text-[9px] px-1.5 py-0.5 rounded-full bg-toxicLime/15 border border-toxicLime/50 text-toxicLime font-mono font-bold">v7.0</span>
+          </div>
+          <p class="text-[9px] sm:text-[10px] font-mono text-purple-300 uppercase tracking-wider">GOD TIER ENGINE</p>
+        </div>
+      </div>
+
+      <!-- БАСОМЕТР + ГРОМКОСТЬ -->
+      <div class="flex items-center gap-2 bg-obsidian/90 border border-purple-700/40 rounded-2xl px-2.5 py-1 shadow-inner">
+        <div class="flex flex-col">
+          <div class="flex items-center justify-between text-[8px] font-mono text-purple-300 uppercase">
+            <span>⚡ BASS METER</span>
+            <span id="bassDbLabel" class="text-toxicLime font-bold">0 dB</span>
+          </div>
+          <canvas id="bassMeterCanvas" width="110" height="20" class="rounded bg-black/60"></canvas>
+        </div>
+        <div class="flex items-center gap-1 pl-2 border-l border-purple-800/50">
+          <span class="text-xs" id="volIcon">🔊</span>
+          <input type="range" min="0" max="100" value="85" class="vol-slider w-14 sm:w-20" oninput="sfx.setVolume(this.value)">
+          <span id="volValueText" class="text-[9px] font-mono text-gray-300 w-6">85%</span>
+        </div>
+      </div>
+
+      <!-- Скрытые инпуты -->
+      <input type="file" id="customAudioFileInput" accept="audio/*" class="hidden" onchange="sfx.handleUploadedAudio(event)">
+      <input type="file" id="customDragonFileInput" accept="image/*" class="hidden" onchange="app.handleUploadedDragon(event)">
+      <input type="file" id="customLogoFileInput" accept="image/*" class="hidden" onchange="app.handleUploadedLogo(event)">
+      <input type="file" id="slideImportInput" accept=".pptx,.pdf,.txt" class="hidden" onchange="app.openPresentationConfigModal(event)">
+      <input type="file" id="importJsonInput" accept=".json" class="hidden" onchange="app.importQuizJson(event)">
+
+      <div id="header-controls" class="flex items-center flex-wrap justify-end gap-1.5 text-[11px] font-semibold"></div>
+    </div>
+  </header>
+
+  <!-- ==================== ГЛАВНЫЙ КОНТЕЙНЕР ЭКРАНОВ ==================== -->
+  <main id="main-view" class="relative z-20 flex-1 max-w-7xl w-full mx-auto px-2.5 sm:px-6 py-3 sm:py-6 flex flex-col justify-center"></main>
+
+  <!-- ==================== ФУТЕР ==================== -->
+  <footer class="relative z-30 w-full px-3 py-2.5 border-t border-purple-950/60 text-center text-[10px] sm:text-[11px] font-mono text-purple-400/80 bg-obsidian/85 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
+      <div class="flex items-center gap-2">
+        <span>PHILO ARENA © 2026</span>
+        <span>•</span>
+        <span id="storageUsageBadge" class="text-toxicLime">Память: 18 KB / 5000 KB</span>
+      </div>
+      <div class="flex items-center flex-wrap justify-center gap-2.5">
+        <button onclick="document.getElementById('slideImportInput').click()" class="text-amber-400 hover:underline font-bold">📄 ИИ-Импорт Слайдов</button>
+        <span>•</span>
+        <button onclick="document.getElementById('customLogoFileInput').click()" class="text-purple-300 hover:underline">🛡️ Свое Лого PA</button>
+        <span>•</span>
+        <button onclick="document.getElementById('customDragonFileInput').click()" class="text-purple-300 hover:underline">🐉 Арт Драконов</button>
+        <span>•</span>
+        <button onclick="app.exportQuizzesJson()" class="text-toxicLime hover:underline">📥 Скачать бэкап (.json)</button>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ==================== МОДАЛКА НАСТРОЕК ИМПОРТА ПРЕЗЕНТАЦИИ (ПЕРЕД ГЕНЕРАЦИЕЙ!) ==================== -->
+  <div id="slideConfigModal" style="display:none;" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-xl items-center justify-center p-4">
+    <div class="glass-panel max-w-lg w-full rounded-3xl p-6 sm:p-7 border-2 border-amber-400/60 space-y-4">
+      <div class="flex justify-between items-center pb-3 border-b border-purple-900/40">
+        <div>
+          <span class="text-[10px] font-mono text-amber-400 font-bold uppercase tracking-widest">ШАГ 1 // НАСТРОЙКА ИИ-ГЕНЕРАЦИИ</span>
+          <h3 class="text-xl font-black font-display text-white">ПАРАМЕТРЫ ВОПРОСОВ ИЗ СЛАЙДОВ</h3>
+        </div>
+        <button onclick="document.getElementById('slideConfigModal').style.display='none'" class="w-8 h-8 rounded-full bg-purple-900/60 text-white font-bold">✕</button>
+      </div>
+
+      <div class="p-3 rounded-xl bg-obsidian/80 border border-purple-800/50 text-xs font-mono text-purple-200">
+        Выбран файл: <b id="slideFileNameLabel" class="text-toxicLime">presentation.pptx</b>
+      </div>
+
+      <div class="space-y-3">
+        <div>
+          <div class="flex justify-between text-xs font-mono text-gray-300 mb-1">
+            <span>Сколько вопросов сгенерировать:</span>
+            <b id="slideCountVal" class="text-toxicLime text-sm">30 вопросов</b>
+          </div>
+          <input type="range" id="slideTargetCount" min="5" max="100" value="30" class="w-full accent-emerald-400"
+                 oninput="document.getElementById('slideCountVal').textContent = this.value + ' вопросов'">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs font-mono text-purple-300">Сложность вопросов</label>
+            <select id="slideDifficultySelect" class="w-full mt-1 py-2 px-3 rounded-xl bg-obsidian border border-purple-700/50 text-white text-xs font-bold">
+              <option value="MIXED">Смешанная (Баланс)</option>
+              <option value="EASY">Легкая (100 PTS)</option>
+              <option value="MEDIUM">Средняя (150 PTS)</option>
+              <option value="HARD">Хардкор (250 PTS)</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-xs font-mono text-purple-300">Карт на 1 игрока</label>
+            <input type="number" id="slidePicksCount" min="1" max="50" value="6" class="w-full mt-1 py-2 px-3 rounded-xl bg-obsidian border border-purple-700/50 text-white font-mono text-xs font-bold">
+          </div>
+        </div>
+      </div>
+
+      <p class="text-[11px] text-gray-400">
+        ✨ Умный фильтр автоматически исправит КАПСЛОК на нормальные буквы, уберет скобки `((`, цифры и создаст вопросы строго по твоим слайдам без чужих тем!
+      </p>
+
+      <button onclick="app.startConfirmedSlideGeneration()" class="w-full py-3.5 rounded-2xl cta-lime-glow text-gray-950 font-black text-sm uppercase">
+        🚀 СГЕНЕРИРОВАТЬ ЧИСТЫЕ ВОПРОСЫ →
+      </button>
+    </div>
+  </div>
+
+  <!-- ==================== МОДАЛКА ПРОГРЕССА АНАЛИЗА ПРЕЗЕНТАЦИИ ==================== -->
+  <div id="aiSlideLoaderModal" style="display:none;" class="fixed inset-0 z-50 bg-black/92 backdrop-blur-2xl flex-col items-center justify-center p-5 text-center">
+    <div class="glass-panel max-w-md w-full rounded-3xl p-6 sm:p-8 border-2 border-toxicLime/60 space-y-4">
+      <div class="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-purple-600 to-toxicLime flex items-center justify-center text-3xl animate-spin">
+        🧠
+      </div>
+      <div class="text-xs font-mono text-toxicLime uppercase tracking-widest">DEEP SLIDE AI ANALYZER v7.0</div>
+      <h3 id="aiLoaderTitle" class="text-xl sm:text-2xl font-black font-display text-white">АНАЛИЗИРУЮ СЛАЙДЫ...</h3>
+      <p id="aiLoaderStepText" class="text-xs font-mono text-purple-200">Нормализация регистра букв и удаление мусора...</p>
+      <div class="w-full h-3 rounded-full bg-obsidian border border-purple-700/50 overflow-hidden">
+        <div id="aiLoaderBar" class="h-full bg-gradient-to-r from-purple-500 via-fuchsia-400 to-toxicLime transition-all duration-300" style="width: 15%"></div>
+      </div>
+      <div id="aiLoaderStats" class="text-[11px] font-mono text-gray-400">Обработка...</div>
+    </div>
+  </div>
+
+  <!-- ==================== МОДАЛКА РУЛЕТКИ СПОСОБНОСТЕЙ ==================== -->
+  <div id="roulette" style="display:none;" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-xl flex-col items-center justify-center p-4 text-center">
+    <div class="text-xs font-mono font-bold text-toxicLime tracking-widest uppercase mb-1">🎰 DRAGON PERK ROULETTE</div>
+    <h3 class="text-xl sm:text-3xl font-black font-display text-white mb-2">ВЫБИТО 2 СПОСОБНОСТИ НА МАТЧ</h3>
+    <p class="text-xs text-purple-300 font-mono mb-4">Каждая способность работает строго 1 раз за всю игру!</p>
+    <div class="flex gap-4 my-3">
+      <div id="rl0" class="reel">🎲</div>
+      <div id="rl1" class="reel">🎲</div>
+    </div>
+    <div id="rl-names" class="max-w-sm text-xs sm:text-sm space-y-2 text-purple-200 mt-2"></div>
+    <button onclick="document.getElementById('roulette').style.display='none'" class="mt-5 px-7 py-3 rounded-xl cta-lime-glow text-gray-950 font-black text-xs uppercase">В БОЙ →</button>
+  </div>
+
+  <!-- ==================== КАСТОМИЗАЦИЯ ПРОФИЛЯ И ПЕРСОНАЖА ИГРОКА (БЕЗ ТОРЧАЩЕГО ВИДЖЕТА СНИЗУ!) ==================== -->
+  <div id="google-modal" style="display:none;" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-xl items-center justify-center p-4" onclick="if(event.target===this) app.closeGoogleModal()">
+    <div class="glass-panel w-full max-w-lg rounded-3xl p-5 sm:p-7 border border-purple-500/50 relative max-h-[92vh] overflow-y-auto">
+      <div class="flex items-center justify-between pb-3 border-b border-purple-900/40 mb-4">
+        <div>
+          <span class="text-[10px] font-mono font-bold text-toxicLime uppercase tracking-widest">PLAYER CUSTOMIZATION & PROFILE</span>
+          <h3 class="text-lg sm:text-xl font-black font-display text-white">ТВОЙ ПЕРСОНАЖ И ПРОФИЛЬ</h3>
+        </div>
+        <button onclick="app.closeGoogleModal()" class="w-8 h-8 rounded-full bg-purple-900/60 hover:bg-purple-700 text-white flex items-center justify-center font-bold">✕</button>
+      </div>
+
+      <div class="space-y-4">
+        <!-- Выбор кибер-аватара персонажа -->
+        <div>
+          <label class="text-xs font-mono text-purple-300 uppercase font-bold block mb-2">1. Выбери своего Персонажа (виден всем и на Подиуме Топ-3):</label>
+          <div id="avatarPickerGrid" class="grid grid-cols-4 sm:grid-cols-8 gap-2"></div>
+        </div>
+
+        <!-- Имя, Титул и Почта -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="text-[11px] font-mono text-gray-400">Твой Никнейм</label>
+            <input id="g-name-input" class="w-full mt-1 py-2.5 px-3 rounded-xl bg-obsidian border border-purple-600/50 text-white text-sm font-bold" placeholder="Азиз (Qshark)" value="QSHARK">
+          </div>
+          <div>
+            <label class="text-[11px] font-mono text-gray-400">Боевой Титул на Подиуме</label>
+            <select id="g-title-input" class="w-full mt-1 py-2.5 px-3 rounded-xl bg-obsidian border border-purple-600/50 text-toxicLime text-xs font-bold">
+              <option value="👑 ПОВЕЛИТЕЛЬ АРЕНЫ">👑 ПОВЕЛИТЕЛЬ АРЕНЫ</option>
+              <option value="🐉 ДРАКОН ФИЛОСОФИИ">🐉 ДРАКОН ФИЛОСОФИИ</option>
+              <option value="⚡ БОГ БЛИЦА X5">⚡ БОГ БЛИЦА X5</option>
+              <option value="🥷 НОЧНОЙ ЭКСПРОПРИАТОР">🥷 НОЧНОЙ ЭКСПРОПРИАТОР</option>
+              <option value="🧠 СВЕРХЧЕЛОВЕК НИЦШЕ">🧠 СВЕРХЧЕЛОВЕК НИЦШЕ</option>
+              <option value="🔥 СИГМА МЫСЛИТЕЛЬ">🔥 СИГМА МЫСЛИТЕЛЬ</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="text-[11px] font-mono text-gray-400">Твой Google Email (для сохранения библиотеки)</label>
+          <input id="g-email-input" class="w-full mt-1 py-2 px-3 rounded-xl bg-obsidian border border-purple-600/40 text-white text-xs font-mono" placeholder="you@gmail.com" value="qshark.creator@gmail.com">
+        </div>
+
+        <!-- Личный цвет неона для Главного Экрана (не сбивается чужими играми!) -->
+        <div class="p-3.5 rounded-2xl bg-obsidian/80 border border-purple-800/50">
+          <label class="text-xs font-mono text-toxicLime font-bold uppercase block mb-2">2. Твой личный цвет неона в Главном Меню (навсегда):</label>
+          <div class="flex items-center gap-2 flex-wrap">
+            <input type="color" id="g-home-color" value="#a855f7" onchange="app.setPersonalHomeNeon(this.value)" class="w-8 h-8 rounded cursor-pointer bg-transparent border-0">
+            <button type="button" onclick="app.setPersonalHomeNeon('#a855f7')" class="px-2.5 py-1 rounded-lg bg-purple-600 text-white text-xs font-bold">Фиолетовый</button>
+            <button type="button" onclick="app.setPersonalHomeNeon('#22c55e')" class="px-2.5 py-1 rounded-lg bg-emerald-500 text-black text-xs font-bold">Лайм</button>
+            <button type="button" onclick="app.setPersonalHomeNeon('#ff2e54')" class="px-2.5 py-1 rounded-lg bg-rose-600 text-white text-xs font-bold">Алый Кибер</button>
+            <button type="button" onclick="app.setPersonalHomeNeon('#06b6d4')" class="px-2.5 py-1 rounded-lg bg-cyan-500 text-black text-xs font-bold">Циан</button>
+            <button type="button" onclick="app.setPersonalHomeNeon('#eab308')" class="px-2.5 py-1 rounded-lg bg-amber-400 text-black text-xs font-bold">Золото</button>
+          </div>
+        </div>
+
+        <div class="flex gap-2 pt-2">
+          <button onclick="app.confirmGoogleLogin()" class="flex-1 py-3.5 rounded-xl cta-lime-glow text-gray-950 font-black text-xs uppercase">
+            ✓ СОХРАНИТЬ ПЕРСОНАЖА И ПРОФИЛЬ
+          </button>
+          <button id="g-logout" onclick="app.logoutGoogle()" style="display:none;" class="px-4 py-3.5 rounded-xl bg-crimson text-white font-bold text-xs">
+            Выйти
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Всплывающее уведомление -->
+  <div id="toastNotification" class="fixed bottom-4 right-4 left-4 sm:left-auto z-50 transform translate-y-28 opacity-0 transition-all duration-300 pointer-events-none px-4 py-3 rounded-2xl glass-panel border border-purple-400/50 text-white font-mono text-xs flex items-center gap-2.5">
+    <span id="toastIcon" class="text-base">⚡</span>
+    <span id="toastMsg" class="truncate">Уведомление</span>
+  </div>
+
+<script>
+// =========================================================================
+// 1. БАНК ИЗ 12 ВАРИАТИВНЫХ МЕМОВ (ПОЛНЫЙ РАЗМЕР БЕЗ ОБРЕЗКИ НА ТЕЛЕФОНЕ И ПК!)
+// =========================================================================
+const MEME_CATALOG = {
+  win: [
+    { name: 'Гигачад Сигма', url: 'https://media.giphy.com/media/CAYVZA5NRb529kKQUc/giphy.gif', tag: 'SIGMA +1000 AURA' },
+    { name: 'Томас Шелби Успех', url: 'https://media.giphy.com/media/d3mlE7uhX8KFgEmY/giphy.gif', tag: 'ГЕНИЙ МЫСЛИ (200 IQ)' },
+    { name: 'Патрик Бейтман Одобряет', url: 'https://media.giphy.com/media/eKNrUbDJuFuaQ1A37p/giphy.gif', tag: 'ИДЕАЛЬНЫЙ ОТВЕТ' },
+    { name: 'Нео уклоняется от пуль', url: 'https://media.giphy.com/media/eIm624c8nnNbiG0V3g/giphy.gif', tag: 'ИЗБРАННЫЙ ФИЛОСОФ' },
+    { name: 'Леонардо Ди Каприо Тост', url: 'https://media.giphy.com/media/g9582DNuQppxC/giphy.gif', tag: 'АБСОЛЮТНАЯ БАЗА' },
+    { name: 'Танцующий Кот Вайб', url: 'https://media.giphy.com/media/jpbnoe3UIa8TU8LM13/giphy.gif', tag: 'ЧИСТЫЙ КАЙФ' }
+  ],
+  fail: [
+    { name: 'Грустный Кот Фейл', url: 'https://media.giphy.com/media/3o7TKr3nzbh5WgCFxe/giphy.gif', tag: 'ПОТРАЧЕНО (WASTED)' },
+    { name: 'Уолтер Уайт Падает', url: 'https://media.giphy.com/media/vMmnJti6wQPDy/giphy.gif', tag: 'ФАТАЛЬНЫЙ ПРОМАХ' },
+    { name: 'Гомер Симпсон в кустах', url: 'https://media.giphy.com/media/jUwpNzg9IcyrK/giphy.gif', tag: 'МИНУС АУРА' },
+    { name: 'Пикард Фейспалм', url: 'https://media.giphy.com/media/XsUtdIeJ0MWMo/giphy.gif', tag: 'СОКРАТ В ШОКЕ' },
+    { name: 'Собака в огне (This is fine)', url: 'https://media.giphy.com/media/QMHoU66sBXqqLqYvGO/giphy.gif', tag: 'ВСЁ В ПОРЯДКЕ...' },
+    { name: 'Траволта не понимает', url: 'https://media.giphy.com/media/3o7aTskHEUdgCQAXde/giphy.gif', tag: 'ГДЕ ЛОГИКА?' }
+  ]
+};
+
+const AVATARS_LIST = ['🐉', '🥷', '👑', '💀', '🤖', '⚡', '🧛', '🦊'];
+
+// =========================================================================
+// 2. ЗВУКОВОЙ ДВИЖОК + БАСОМЕТР
+// =========================================================================
+const sfx = {
+  ctx: null,
+  analyser: null,
+  masterGain: null,
+  phonkInterval: null,
+  audioEl: null,
+  customTrackUrl: '',
+  customTrackName: '',
+  volume: 0.85,
+  vizStarted: false,
+
+  init() {
+    if (!this.ctx) {
+      this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+      this.masterGain = this.ctx.createGain();
+      this.masterGain.gain.value = this.volume;
+      this.analyser = this.ctx.createAnalyser();
+      this.analyser.fftSize = 64;
+      this.masterGain.connect(this.analyser);
+      this.analyser.connect(this.ctx.destination);
+      if (!this.vizStarted) {
+        this.vizStarted = true;
+        this.runBassVisualizerLoop();
+      }
+    }
+    if (this.ctx.state === 'suspended') this.ctx.resume();
+  },
+
+  setVolume(val) {
+    this.volume = Math.max(0, Math.min(1, Number(val) / 100));
+    if (this.masterGain && this.ctx) {
+      this.masterGain.gain.setValueAtTime(this.volume, this.ctx.currentTime);
+    }
+    if (this.audioEl) this.audioEl.volume = this.volume;
+    const lbl = document.getElementById('volValueText');
+    const ic = document.getElementById('volIcon');
+    if (lbl) lbl.textContent = `${Math.round(this.volume * 100)}%`;
+    if (ic) ic.textContent = this.volume === 0 ? '🔇' : (this.volume < 0.45 ? '🔉' : '🔊');
+  },
+
+  playTone(freq, type = 'sine', duration = 0.16, vol = 0.18) {
+    try {
+      this.init();
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+      gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+      osc.start();
+      osc.stop(this.ctx.currentTime + duration);
+    } catch (e) {}
+  },
+
+  click() { this.playTone(580, 'triangle', 0.05, 0.12); },
+  blitz() { this.playTone(190, 'sawtooth', 0.25, 0.25); setTimeout(() => this.playTone(340, 'sawtooth', 0.3, 0.25), 100); },
+  win() { this.playTone(587, 'sine', 0.14, 0.22); setTimeout(() => this.playTone(880, 'sine', 0.32, 0.24), 110); },
+  fail() { this.playTone(135, 'sawtooth', 0.42, 0.28); },
+  playing() { return !!(this.audioEl || this.phonkInterval); },
+
+  handleUploadedAudio(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+    if (this.customTrackUrl && this.customTrackUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(this.customTrackUrl);
+    }
+    this.customTrackUrl = URL.createObjectURL(file);
+    this.customTrackName = file.name;
+    if (window.app && app.draftQuiz) {
+      app.draftQuiz.audioUrl = this.customTrackUrl;
+      app.draftQuiz.audioName = file.name;
+    }
+    showToast(`🎵 Трек «${file.name}» заряжен!`, '🔊');
+    this.startPhonkBeat();
+  },
+
+  toggleMusic() {
+    if (this.playing()) {
+      this.stopPhonkBeat();
+      showToast('🔇 Музыка остановлена', '⏹');
+    } else {
+      this.startPhonkBeat();
+      showToast(`🔊 Играет: ${this.customTrackName || 'Drift Phonk 808 Cowbell'}`, '🔥');
+    }
+    if (window.app) app.render();
+  },
+
+  startPhonkBeat() {
+    this.stopPhonkBeat();
+    this.init();
+    const src = this.customTrackUrl || (window.app && app.room && app.room.quiz.audioUrl) || '';
+    if (src) {
+      const a = new Audio();
+      a.crossOrigin = 'anonymous';
+      a.src = src;
+      a.loop = true;
+      a.volume = this.volume;
+      this.audioEl = a;
+      try {
+        const srcNode = this.ctx.createMediaElementSource(a);
+        srcNode.connect(this.masterGain);
+      } catch (e) {}
+      const fallback = () => {
+        if (this.audioEl === a) {
+          this.audioEl = null;
+          this.synthBeat();
+        }
+      };
+      a.onerror = fallback;
+      const pr = a.play();
+      if (pr && pr.catch) pr.catch(fallback);
+    } else {
+      this.synthBeat();
+    }
+    if (window.app) app.render();
+  },
+
+  synthBeat() {
+    this.stopPhonkBeat();
+    try {
+      this.init();
+      const melody = [523.25, 523.25, 622.25, 523.25, 466.16, 523.25, 392.00, 466.16];
+      let step = 0;
+      this.phonkInterval = setInterval(() => {
+        const note = melody[step % melody.length];
+        this.playTone(note, 'square', 0.16, 0.22);
+        this.playTone(note * 1.5, 'sawtooth', 0.11, 0.14);
+        if (step % 2 === 0) {
+          this.playTone(62, 'sawtooth', 0.34, 0.45);
+          this.playTone(95, 'sine', 0.25, 0.38);
+        }
+        step++;
+      }, 205);
+    } catch (e) {}
+  },
+
+  stopPhonkBeat() {
+    if (this.audioEl) { this.audioEl.pause(); this.audioEl = null; }
+    if (this.phonkInterval) { clearInterval(this.phonkInterval); this.phonkInterval = null; }
+    document.documentElement.style.setProperty('--bass-scale', '1');
+    document.documentElement.style.setProperty('--bass-glow-px', '14px');
+    if (window.app) app.render();
+  },
+
+  runBassVisualizerLoop() {
+    const data = new Uint8Array(32);
+    const draw = () => {
+      requestAnimationFrame(draw);
+      const canvas = document.getElementById('bassMeterCanvas');
+      const heroCanvas = document.getElementById('heroBassCanvas');
+      if (this.analyser) {
+        this.analyser.getByteFrequencyData(data);
+      }
+
+      let bassSum = 0;
+      for (let i = 0; i < 7; i++) bassSum += data[i];
+      const bassAvg = bassSum / 7;
+      const norm = bassAvg / 255;
+
+      const scale = 1 + norm * 0.085;
+      const glowPx = Math.round(14 + norm * 36) + 'px';
+      const eyeOp = (0.65 + norm * 0.35).toFixed(2);
+      document.documentElement.style.setProperty('--bass-scale', scale.toFixed(3));
+      document.documentElement.style.setProperty('--bass-glow-px', glowPx);
+      document.documentElement.style.setProperty('--bass-eye-opacity', eyeOp);
+
+      const dbEl = document.getElementById('bassDbLabel');
+      if (dbEl) dbEl.textContent = bassAvg > 5 ? `+${Math.round(norm * 18)} dB` : '0 dB';
+
+      if (canvas) {
+        const g = canvas.getContext('2d');
+        g.clearRect(0, 0, canvas.width, canvas.height);
+        const barW = 4.5;
+        for (let i = 0; i < 18; i++) {
+          const v = data[i] || 2;
+          const h = Math.max(2, (v / 255) * canvas.height);
+          g.fillStyle = v > 170 ? '#ff2e54' : (v > 95 ? '#22c55e' : '#a855f7');
+          g.fillRect(i * (barW + 1.5), canvas.height - h, barW, h);
+        }
+      }
+
+      if (heroCanvas) {
+        const hg = heroCanvas.getContext('2d');
+        hg.clearRect(0, 0, heroCanvas.width, heroCanvas.height);
+        const cols = 26;
+        const w = heroCanvas.width / cols;
+        for (let i = 0; i < cols; i++) {
+          const v = data[i % 22] || (this.playing() ? 35 : 4);
+          const h = Math.max(3, (v / 255) * heroCanvas.height);
+          hg.fillStyle = v > 160 ? '#22c55e' : '#c084fc';
+          hg.fillRect(i * w + 1, heroCanvas.height - h, w - 3, h);
+        }
+      }
+    };
+    draw();
+  }
+};
+
+function showToast(msg, icon = '⚡') {
+  const toast = document.getElementById('toastNotification');
+  if (!toast) return;
+  document.getElementById('toastIcon').textContent = icon;
+  document.getElementById('toastMsg').textContent = msg;
+  toast.classList.remove('translate-y-28', 'opacity-0');
+  setTimeout(() => toast.classList.add('translate-y-28', 'opacity-0'), 3300);
+}
+
+// =========================================================================
+// 3. ГЕНЕРАТОР БАЗОВОГО ПАКА С РАЗНООБРАЗНЫМИ МЕМАМИ
+// =========================================================================
+function generateDefaultQuiz(count = 40) {
+  const bank = [
+    { cat: 'Античность', q: 'Кто произнес знаменитую фразу: «Я знаю, что ничего не знаю»?', opts: ['Сократ', 'Платон', 'Аристотель', 'Гераклит'], c: 0, diff: 'EASY', score: 100 },
+    { cat: 'Этика Канта', q: 'В чем заключается суть категорического императива Иммануила Канта?', opts: ['Делай то, что приносит личную выгоду', 'Поступай согласно всеобщему нравственному закону', 'Избегай страданий любой ценой', 'Отвергай любые социальные правила'], c: 1, diff: 'HARD', score: 200 },
+    { cat: 'Ницше и воля', q: 'Какой концепт лежит в основе философии Фридриха Ницше?', opts: ['Воля к власти и идея Сверхчеловека', 'Абсолютный мировой дух', 'Общественный государственный договор', 'Мир чистых эйдосов'], c: 0, diff: 'MEDIUM', score: 150 },
+    { cat: 'Кинизм', q: 'Что философ Диоген Синопский ответил Александру Македонскому?', opts: ['Подари мне половину царства', 'Отойди и не заслоняй мне солнце', 'Назначь меня главным советником', 'Построй мне золотой храм'], c: 1, diff: 'EASY', score: 100 },
+    { cat: 'Гносеология', q: 'Кому принадлежит тезис «Cogito, ergo sum» (Мыслю, следовательно, существую)?', opts: ['Рене Декарт', 'Фрэнсис Бэкон', 'Джон Локк', 'Дэвид Юм'], c: 0, diff: 'MEDIUM', score: 140 },
+    { cat: 'Метафизика', q: 'Что символизируют тени на стене в «Мифе о пещере» Платона?', opts: ['Истинный мир вечных идей', 'Иллюзорное чувственное восприятие толпы', 'Строгий научный метод познания', 'Законы формальной логики'], c: 1, diff: 'HARD', score: 200 },
+    { cat: 'Экзистенциализм', q: 'Жан-Поль Сартр утверждал, что человек в своей жизни «приговорен быть...» каким?', opts: ['Безусловно счастливым', 'Абсолютно свободным', 'Послушным обществу', 'Бессмертным'], c: 1, diff: 'MEDIUM', score: 150 },
+    { cat: 'Этические дилеммы', q: 'Какой философский конфликт иллюстрирует классическая «Проблема вагонетки»?', opts: ['Столкновение утилитаризма и деонтологии', 'Теорию зарождения Вселенной', 'Субъективный солипсизм', 'Эстетику эпохи Возрождения'], c: 0, diff: 'HARD', score: 200 }
+  ];
+
+  const total = Math.max(5, Math.min(100, Number(count) || 40));
+  const questions = Array.from({ length: total }, (_, idx) => {
+    const item = bank[idx % bank.length];
+    const winMemeObj = MEME_CATALOG.win[idx % MEME_CATALOG.win.length];
+    const failMemeObj = MEME_CATALOG.fail[idx % MEME_CATALOG.fail.length];
+    return {
+      id: 'card_' + (idx + 1),
+      category: item.cat,
+      text: `${item.q}`,
+      options: [...item.opts],
+      correct: item.c,
+      difficulty: item.diff,
+      baseScore: item.score,
+      memeSuccess: winMemeObj.url,
+      memeFail: failMemeObj.url
+    };
+  });
+
+  return {
+    id: 'philo_pack_default',
+    title: 'Dragon Arena: Слепой Драфт',
+    author: 'Qshark Studio',
+    phonkGif: MEME_CATALOG.win[0].url,
+    defaultWinMeme: MEME_CATALOG.win[0].url,
+    defaultFailMeme: MEME_CATALOG.fail[0].url,
+    podiumStyle: 'gold', // gold | dragon | crimson
+    audioUrl: '',
+    audioName: '',
+    theme: {
+      neonColor: '#a855f7',
+      secondaryColor: '#22c55e',
+      billboardTitle: 'PHILO ARENA // TWIN DRAGON ENGINE',
+      billboardSub: 'Параллельный режим без ожидания • Живой Басометр • До 100 карт'
+    },
+    settings: {
+      picksPerPlayer: 6,
+      perksPerPlayer: 2,
+      blitz: [{ sec: 5, mult: 5 }, { sec: 10, mult: 3 }, { sec: 15, mult: 2 }],
+      blindMode: true,
+      defaultTimerSec: 20,
+      penaltyOnFail: true
+    },
+    questions
+  };
+}
+
+// =========================================================================
+// 4. ГЛАВНОЕ ЯДРО PHILO ARENA v7.0
+// =========================================================================
+const app = {
+  isHost: false,
+  view: 'home',
+  user: JSON.parse(localStorage.getItem('pa_user') || 'null') || {
+    name: 'QSHARK',
+    email: 'qshark.creator@gmail.com',
+    avatar: '🐉',
+    title: '👑 ПОВЕЛИТЕЛЬ АРЕНЫ',
+    homeNeon: '#a855f7'
+  },
+  quizzes: JSON.parse(localStorage.getItem('pa_quizzes') || 'null') || [generateDefaultQuiz(40)],
+  draftQuiz: null,
+  room: null,
+  localPlayerId: sessionStorage.getItem('pa_pid') || ('p_' + Math.random().toString(36).substring(2, 8)),
+
+  pState: {
+    subPhase: 'grid',
+    cardIdx: null,
+    multiplier: 1,
+    timer: 20,
+    hiddenOptions: [],
+    oracleAnswer: null,
+    lastOutcome: null
+  },
+  personalTimerId: null,
+  pendingPresentationFile: null,
+
+  mqttClient: null,
+  localBroadcast: null,
+  pendingJoinNick: null,
+  syncTimeoutId: null,
+  netStatus: '🟢 Облачный сервер готов',
+
+  perksCatalog: [
+    { id: 'shield', icon: '🛡️', name: 'ЩИТ ДРАКОНА', desc: 'Иммунитет к потере очков при ошибке на Блице' },
+    { id: 'fifty', icon: '✂️', name: 'БРИТВА ОККАМА', desc: 'Убирает 2 заведомо ложных варианта (50/50)' },
+    { id: 'oracle', icon: '👁️', name: 'ДЕМОН ЛАПЛАСА', desc: 'Подсветить 100% правильный ответ на экране' },
+    { id: 'double', icon: '🩸', name: 'ТАБУЛА РАСА (X2)', desc: 'Удвоить текущий множитель очков (вплоть до x10!)' },
+    { id: 'triple', icon: '⚡', name: 'PHONK RAGE (X3)', desc: 'Утроить множитель очков текущего вопроса' },
+    { id: 'time', icon: '⏳', name: 'ВРЕМЯ БЕРГСОНА', desc: 'Добавить +7 секунд к твоему таймеру вопроса' },
+    { id: 'nihilism', icon: '💀', name: 'НИГИЛИЗМ НИЦШЕ', desc: 'Списать -150 баллов у текущего Топ-1 лидера' },
+    { id: 'bomb', icon: '💣', name: 'БОЛЬШОЙ ВЗРЫВ', desc: '-80 очков всем остальным соперникам' },
+    { id: 'vampire', icon: '🧛', name: 'ВАМПИР ШОПЕНГАУЭРА', desc: 'Украсть 100 очков у случайного соперника' },
+    { id: 'steal', icon: '🥷', name: 'ЭКСПРОПРИАЦИЯ', desc: 'Добавить +2 дополнительные карточки к твоему лимиту' }
+  ],
+
+  init() {
+    sessionStorage.setItem('pa_pid', this.localPlayerId);
+    if (!this.user.avatar) this.user.avatar = '🐉';
+    if (!this.user.title) this.user.title = '👑 ПОВЕЛИТЕЛЬ АРЕНЫ';
+    if (!this.user.homeNeon) this.user.homeNeon = '#a855f7';
+
+    if (!this.quizzes || this.quizzes.length === 0) {
+      this.quizzes = [generateDefaultQuiz(40)];
+      this.saveQuizzes();
+    }
+    this.ensureQuizTheme(this.quizzes[0]);
+    this.draftQuiz = JSON.parse(JSON.stringify(this.quizzes[0]));
+
+    // В Главном меню всегда ставим личный цвет пользователя!
+    this.applyPersonalHomeTheme();
+    this.updateStorageUsageIndicator();
+
+    const savedDragon = localStorage.getItem('pa_custom_dragon');
+    if (savedDragon) this.activateTwinDragonImage(savedDragon);
+
+    const savedLogo = localStorage.getItem('pa_custom_logo');
+    if (savedLogo) this.activateCustomLogoImage(savedLogo);
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('pin')) {
+      const pinFromQr = params.get('pin');
+      setTimeout(() => {
+        const defaultNick = this.user ? this.user.name : ('DRAGON_' + Math.floor(Math.random() * 90 + 10));
+        const nick = prompt(`Вход в комнату #${pinFromQr}. Твой никнейм:`, defaultNick);
+        if (nick) this.joinRoom(pinFromQr, nick);
+      }, 250);
+    }
+
+    this.render();
+  },
+
+  // Разделение цветов: Личный неон в Главном меню vs Кастомный неон внутри комнаты!
+  applyPersonalHomeTheme() {
+    const homeColor = (this.user && this.user.homeNeon) || '#a855f7';
+    document.documentElement.style.setProperty('--theme-neon', homeColor);
+    document.documentElement.style.setProperty('--theme-secondary', '#22c55e');
+    document.documentElement.style.setProperty('--theme-glow', homeColor + '88');
+  },
+
+  setPersonalHomeNeon(hex) {
+    this.user.homeNeon = hex;
+    localStorage.setItem('pa_user', JSON.stringify(this.user));
+    if (this.view === 'home' || this.view === 'library') {
+      this.applyPersonalHomeTheme();
+    }
+  },
+
+  applyRoomThemeColors(themeObj) {
+    if (!themeObj) return;
+    const neon = themeObj.neonColor || '#a855f7';
+    const sec = themeObj.secondaryColor || '#22c55e';
+    document.documentElement.style.setProperty('--theme-neon', neon);
+    document.documentElement.style.setProperty('--theme-secondary', sec);
+    document.documentElement.style.setProperty('--theme-glow', neon + '88');
+  },
+
+  // Полный выход из завершенной комнаты, чтобы не перекидывало назад в старую игру!
+  leaveCurrentRoom() {
+    sfx.click();
+    clearInterval(this.personalTimerId);
+    sfx.stopPhonkBeat();
+    if (this.mqttClient) {
+      try { this.mqttClient.end(true); } catch (e) {}
+      this.mqttClient = null;
+    }
+    this.room = null;
+    this.isHost = false;
+    this.resetPersonalState();
+    this.applyPersonalHomeTheme();
+    this.view = 'home';
+    showToast('Вы вышли из комнаты в главное меню', '🏠');
+    this.render();
+  },
+
+  setView(v) {
+    sfx.click();
+    this.view = v;
+    // Если вернулись на главную или в библиотеку — возвращаем личный цвет пользователя!
+    if (v === 'home' || v === 'library') {
+      this.applyPersonalHomeTheme();
+    } else if (v === 'builder' && this.draftQuiz?.theme) {
+      this.applyRoomThemeColors(this.draftQuiz.theme);
+    } else if ((v === 'host' || v === 'player') && this.room?.quiz?.theme) {
+      this.applyRoomThemeColors(this.room.quiz.theme);
+    }
+    this.render();
+  },
+
+  updateStorageUsageIndicator() {
+    try {
+      let totalBytes = 0;
+      for (let k in localStorage) {
+        if (localStorage.hasOwnProperty(k)) {
+          totalBytes += (localStorage[k].length + k.length) * 2;
+        }
+      }
+      const kb = Math.round(totalBytes / 1024);
+      const badge = document.getElementById('storageUsageBadge');
+      if (badge) badge.textContent = `Память: ${kb} KB / 5000 KB (${this.quizzes.length} игр)`;
+    } catch (e) {}
+  },
+
+  exportQuizzesJson() {
+    sfx.click();
+    const blob = new Blob([JSON.stringify(this.quizzes, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `philo_arena_backup_${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('📥 Бэкап всех игр скачан (.json)!', '✅');
+  },
+
+  importQuizJson(ev) {
+    const file = ev.target.files && ev.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const parsed = JSON.parse(e.target.result);
+        if (Array.isArray(parsed)) this.quizzes = parsed;
+        else if (parsed && parsed.questions) this.quizzes.unshift(parsed);
+        this.saveQuizzes();
+        showToast('✅ Игры загружены!', '📚');
+        this.render();
+      } catch (err) {
+        showToast('Ошибка чтения JSON файла', '⚠️');
+      }
+    };
+    reader.readAsText(file);
+  },
+
+  ensureQuizTheme(q) {
+    if (!q.theme) {
+      q.theme = {
+        neonColor: '#a855f7',
+        secondaryColor: '#22c55e',
+        billboardTitle: 'PHILO ARENA // TWIN DRAGON ENGINE',
+        billboardSub: 'Отвечай на свои карточки без ожидания • Включай Блиц x5'
+      };
+    }
+    if (!q.defaultWinMeme) q.defaultWinMeme = MEME_CATALOG.win[0].url;
+    if (!q.defaultFailMeme) q.defaultFailMeme = MEME_CATALOG.fail[0].url;
+    if (!q.podiumStyle) q.podiumStyle = 'gold';
+  },
+
+  activateTwinDragonImage(srcUrl) {
+    const imgL = document.getElementById('customDragonImgLeft');
+    const imgR = document.getElementById('customDragonImgRight');
+    const svgL = document.getElementById('defaultDragonSvgLeft');
+    const svgR = document.getElementById('defaultDragonSvgRight');
+    if (imgL && imgR && svgL && svgR) {
+      imgL.src = srcUrl; imgR.src = srcUrl;
+      imgL.classList.remove('hidden'); imgR.classList.remove('hidden');
+      svgL.classList.add('hidden'); svgR.classList.add('hidden');
+    }
+  },
+
+  activateCustomLogoImage(srcUrl) {
+    const imgH = document.getElementById('customLogoImgHeader');
+    const svgH = document.getElementById('paShieldSvgHeader');
+    if (imgH && svgH) {
+      imgH.src = srcUrl;
+      imgH.classList.remove('hidden');
+      svgH.classList.add('hidden');
+    }
+  },
+
+  handleUploadedDragon(ev) {
+    const file = ev.target.files && ev.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target.result;
+      try { localStorage.setItem('pa_custom_dragon', dataUrl); } catch (err) {}
+      this.activateTwinDragonImage(dataUrl);
+      showToast('🐉 Арт драконов обновлен!', '🔥');
+    };
+    reader.readAsDataURL(file);
+  },
+
+  handleUploadedLogo(ev) {
+    const file = ev.target.files && ev.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target.result;
+      try { localStorage.setItem('pa_custom_logo', dataUrl); } catch (err) {}
+      this.activateCustomLogoImage(dataUrl);
+      this.render();
+      showToast('🛡️ Логотип PA установлен!', '✅');
+    };
+    reader.readAsDataURL(file);
+  },
+
+  // =========================================================================
+  // ШАГ 1: ОТКРЫТИЕ ОКНА НАСТРОЕК ПЕРЕД ГЕНЕРАЦИЕЙ ПРЕЗЕНТАЦИИ
+  // =========================================================================
+  openPresentationConfigModal(ev) {
+    const file = ev.target.files && ev.target.files[0];
+    if (!file) return;
+    sfx.click();
+    this.pendingPresentationFile = file;
+    document.getElementById('slideFileNameLabel').textContent = file.name;
+    document.getElementById('slideConfigModal').style.display = 'flex';
+  },
+
+  // Нормализация регистра: никакого КАПСЛОКА! Первая буква заглавная, остальные обычные
+  toNormalSentenceCase(str) {
+    if (!str) return '';
+    let s = str.trim();
+    const upperCount = (s.match(/[А-ЯЁA-Z]/g) || []).length;
+    const letterCount = (s.match(/[а-яёa-zА-ЯЁA-Z]/g) || []).length;
+    if (letterCount > 4 && upperCount / letterCount > 0.45) {
+      s = s.toLowerCase();
+    }
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  },
+
+  async startConfirmedSlideGeneration() {
+    const file = this.pendingPresentationFile;
+    if (!file) return;
+    const targetCount = Number(document.getElementById('slideTargetCount').value || 30);
+    const diffMode = document.getElementById('slideDifficultySelect').value || 'MIXED';
+    const picksPerP = Number(document.getElementById('slidePicksCount').value || 6);
+
+    document.getElementById('slideConfigModal').style.display = 'none';
+
+    const modal = document.getElementById('aiSlideLoaderModal');
+    const titleEl = document.getElementById('aiLoaderTitle');
+    const stepEl = document.getElementById('aiLoaderStepText');
+    const barEl = document.getElementById('aiLoaderBar');
+    const statsEl = document.getElementById('aiLoaderStats');
+
+    modal.style.display = 'flex';
+    const setProgress = async (pct, title, step, stats, delayMs = 380) => {
+      barEl.style.width = pct + '%';
+      if (title) titleEl.textContent = title;
+      if (step) stepEl.textContent = step;
+      if (stats) statsEl.textContent = stats;
+      await new Promise(r => setTimeout(r, delayMs));
+    };
+
+    try {
+      await setProgress(20, `ЧИТАЮ «${file.name}»`, 'Извлечение слайдов и склейка абзацев...', `Цель: ${targetCount} вопросов`);
+
+      const ext = file.name.split('.').pop().toLowerCase();
+      let slidesTexts = [];
+
+      if (ext === 'pptx' && window.JSZip) {
+        const zip = await JSZip.loadAsync(file);
+        const slideFiles = Object.keys(zip.files)
+          .filter(name => /^ppt\/slides\/slide\d+\.xml$/i.test(name))
+          .sort((a, b) => parseInt(a.match(/\d+/)[0], 10) - parseInt(b.match(/\d+/)[0], 10));
+
+        for (const slidePath of slideFiles) {
+          const xmlText = await zip.files[slidePath].async('string');
+          const paragraphs = xmlText.split(/<\/a:p>/i);
+          const slideLines = [];
+          paragraphs.forEach(pXml => {
+            const runs = [...pXml.matchAll(/<a:t[^>]*>([^<]+)<\/a:t>/gi)].map(m => m[1]);
+            if (runs.length > 0) {
+              const line = runs.join('').replace(/\s+/g, ' ').trim();
+              if (line.length > 2) slideLines.push(line);
+            }
+          });
+          if (slideLines.length > 0) slidesTexts.push(slideLines.join('. '));
+        }
+      } else if (ext === 'pdf' && window.pdfjsLib) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        const arrayBuf = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuf }).promise;
+        for (let p = 1; p <= pdf.numPages; p++) {
+          const page = await pdf.getPage(p);
+          const content = await page.getTextContent();
+          const text = content.items.map(it => it.str).join(' ').replace(/\s+/g, ' ').trim();
+          if (text.length > 20) slidesTexts.push(text);
+        }
+      } else {
+        const rawText = await file.text();
+        slidesTexts = rawText.split(/\n\s*\n/).map(s => s.trim()).filter(s => s.length > 20);
+      }
+
+      if (slidesTexts.length === 0) {
+        modal.style.display = 'none';
+        showToast('Не удалось найти текст на слайдах!', '⚠️');
+        return;
+      }
+
+      await setProgress(55, 'ФОРМАТИРУЮ РЕГИСТР БУКВ И УБИРАЮ МУСОР...', 'Приведение КАПСЛОКА к нормальному тексту, удаление скобок (( ))...', `Слайдов: ${slidesTexts.length}`);
+
+      const { questions, filteredCount } = await this.smartBuildUniqueQuestions(slidesTexts, targetCount, diffMode, setProgress);
+
+      await setProgress(100, 'ГОТОВО!', `Создано ${questions.length} вопросов строго по твоей теме!`, `Отсеяно мусора: ${filteredCount}`, 350);
+
+      modal.style.display = 'none';
+      const cleanDeckTitle = this.toNormalSentenceCase(file.name.replace(/\.[^.]+$/, ''));
+      this.draftQuiz = generateDefaultQuiz(questions.length);
+      this.draftQuiz.id = 'pptx_' + Date.now();
+      this.draftQuiz.title = cleanDeckTitle;
+      this.draftQuiz.settings.picksPerPlayer = picksPerP;
+      this.draftQuiz.questions = questions;
+      this.setView('builder');
+      sfx.win();
+      showToast(`✅ Создано ${questions.length} вопросов по теме «${cleanDeckTitle}»!`, '🚀');
+    } catch (err) {
+      console.error(err);
+      modal.style.display = 'none';
+      showToast('Ошибка разбора файла презентации', '⚠️');
+    }
+  },
+
+  cleanSlideString(raw) {
+    if (!raw) return '';
+    let s = raw
+      .replace(/&quot;|&#34;/g, '«')
+      .replace(/&amp;/g, 'и')
+      .replace(/&lt;|&gt;/g, '')
+      .replace(/[\(\[\{]{2,}|[\)\]\}]{2,}/g, '')
+      .replace(/\([^\)]*$/g, '')
+      .replace(/^[^\(\)]*\)/g, (m) => m.replace(')', ''))
+      .replace(/https?:\/\/\S+/gi, '')
+      .replace(/\b(слайд|slide|стр\.|страница|рис\.|таблица)\s*\d+/gi, '')
+      .replace(/^[\d\s.,:;—–\-•*#№()]+/, '')
+      .replace(/[\s—–\-:;.,]+$/, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+
+    return this.toNormalSentenceCase(s);
+  },
+
+  isValidMeaningfulPhrase(str) {
+    if (!str || str.length < 20 || str.length > 125) return false;
+    const words = str.split(/\s+/).filter(w => /[а-яёa-z]{2,}/i.test(w));
+    if (words.length < 4) return false;
+    const digitRatio = (str.replace(/\D/g, '').length) / str.length;
+    if (digitRatio > 0.25) return false;
+    if (/^(содержание|введение|заключение|спасибо за внимание|список литературы|план урока|вопросы для|выполнил|проверил)/i.test(str)) return false;
+    return true;
+  },
+
+  textSimilarity(a, b) {
+    const setA = new Set(a.toLowerCase().split(/\s+/).filter(w => w.length > 3));
+    const setB = new Set(b.toLowerCase().split(/\s+/).filter(w => w.length > 3));
+    if (setA.size === 0 || setB.size === 0) return 0;
+    let inter = 0;
+    setA.forEach(w => { if (setB.has(w)) inter++; });
+    return inter / Math.min(setA.size, setB.size);
+  },
+
+  async smartBuildUniqueQuestions(slides, targetCount, diffMode, setProgress) {
+    let filteredCount = 0;
+    const extractedItems = [];
+    const allValidAnswersPool = [];
+
+    slides.forEach((rawSlide, sIdx) => {
+      const sentences = rawSlide
+        .split(/(?<=[.!?])\s+|\s*[•▪●]\s+|\.\s+/)
+        .map(x => this.cleanSlideString(x))
+        .filter(Boolean);
+
+      if (sentences.length === 0) return;
+
+      let slideTopic = this.toNormalSentenceCase(sentences[0]);
+      if (slideTopic.length > 50 || slideTopic.length < 4) {
+        slideTopic = `Слайд #${sIdx + 1}`;
+      }
+
+      sentences.forEach(sent => {
+        if (!this.isValidMeaningfulPhrase(sent)) {
+          filteredCount++;
+          return;
+        }
+
+        const defParts = sent.match(/^([А-ЯЁA-Z][а-яёa-zA-Z\s\-]{3,42}?)\s+[—–-]\s+(?:это\s+)?(.{18,110})$/);
+        if (defParts) {
+          const term = this.cleanSlideString(defParts[1]);
+          const def = this.cleanSlideString(defParts[2]);
+          if (term.split(/\s+/).length <= 5 && this.isValidMeaningfulPhrase(def)) {
+            extractedItems.push({
+              slideNum: sIdx + 1,
+              topic: slideTopic.slice(0, 28),
+              question: `Как в теме раскрывается понятие «${term}»?`,
+              answer: def
+            });
+            allValidAnswersPool.push(def);
+            return;
+          }
+        }
+
+        const cleanTopic = slideTopic.replace(/[«»"]/g, '').slice(0, 44);
+        extractedItems.push({
+          slideNum: sIdx + 1,
+          topic: cleanTopic || `Слайд #${sIdx + 1}`,
+          question: cleanTopic.length > 4 && !sent.toLowerCase().startsWith(cleanTopic.toLowerCase())
+            ? `Какое утверждение верно относится к разделу «${cleanTopic}»?`
+            : `Какой ключевой тезис сформулирован на слайде #${sIdx + 1}?`,
+          answer: this.toNormalSentenceCase(sent)
+        });
+        allValidAnswersPool.push(this.toNormalSentenceCase(sent));
+      });
+    });
+
+    await setProgress(82, 'СОБИРАЮ ВАРИАНТЫ В ОДНОМ РЕГИСТРЕ...', 'Все 4 варианта ответа приводятся к единому стилю без КАПСЛОКА...', `Найдено тезисов: ${extractedItems.length}`);
+
+    const uniqueItems = [];
+    extractedItems.forEach(item => {
+      const isDup = uniqueItems.some(u => this.textSimilarity(u.answer, item.answer) > 0.55);
+      if (!isDup) uniqueItems.push(item);
+      else filteredCount++;
+    });
+
+    // Если в презентации меньше тезисов, чем запросил пользователь, создаем дополнительные вопросы строго из слайдов этой же презентации (никаких чужих тем!)
+    while (uniqueItems.length < targetCount && extractedItems.length > 0) {
+      const base = extractedItems[uniqueItems.length % extractedItems.length];
+      uniqueItems.push({
+        slideNum: base.slideNum,
+        topic: base.topic,
+        question: `Выберите верное положение из слайда #${base.slideNum} («${base.topic}»):`,
+        answer: base.answer
+      });
+    }
+
+    const neutralDistractors = [
+      'Данное положение противоречит основному тезису представленной темы',
+      'Сведение всех рассматриваемых процессов только к случайному совпадению',
+      'Полное отрицание причинно-следственных связей в рамках данного раздела',
+      'Утверждение об отсутствии практического значения данной концепции'
+    ];
+
+    const finalQuestions = uniqueItems.slice(0, targetCount).map((item, idx) => {
+      const wrongOptions = [];
+      for (let k = 0; k < allValidAnswersPool.length && wrongOptions.length < 3; k++) {
+        const cand = this.toNormalSentenceCase(allValidAnswersPool[(idx * 5 + k * 3 + 1) % allValidAnswersPool.length]);
+        if (
+          cand !== item.answer &&
+          this.textSimilarity(cand, item.answer) < 0.35 &&
+          !wrongOptions.some(w => this.textSimilarity(w, cand) > 0.45)
+        ) {
+          wrongOptions.push(cand);
+        }
+      }
+
+      while (wrongOptions.length < 3) {
+        const fb = neutralDistractors[(idx + wrongOptions.length) % neutralDistractors.length];
+        if (!wrongOptions.includes(fb)) wrongOptions.push(fb);
+      }
+
+      // Все 4 варианта гарантированно в нормальном регистре (без КАПСЛОКА!)
+      const options = [this.toNormalSentenceCase(item.answer), ...wrongOptions.slice(0, 3).map(x => this.toNormalSentenceCase(x))];
+      const correctIdx = (idx * 3 + 1) % 4;
+      const tmp = options[correctIdx];
+      options[correctIdx] = options[0];
+      options[0] = tmp;
+
+      let qDiff = 'MEDIUM';
+      let qScore = 150;
+      if (diffMode === 'EASY') { qDiff = 'EASY'; qScore = 100; }
+      else if (diffMode === 'HARD') { qDiff = 'HARD'; qScore = 250; }
+      else {
+        qDiff = idx % 3 === 0 ? 'HARD' : (idx % 2 === 0 ? 'MEDIUM' : 'EASY');
+        qScore = qDiff === 'HARD' ? 200 : (qDiff === 'MEDIUM' ? 150 : 100);
+      }
+
+      const winMemeObj = MEME_CATALOG.win[idx % MEME_CATALOG.win.length];
+      const failMemeObj = MEME_CATALOG.fail[idx % MEME_CATALOG.fail.length];
+
+      return {
+        id: 'ai_card_' + (idx + 1),
+        category: this.toNormalSentenceCase(item.topic),
+        text: this.toNormalSentenceCase(item.question),
+        options,
+        correct: correctIdx,
+        difficulty: qDiff,
+        baseScore: qScore,
+        memeSuccess: winMemeObj.url,
+        memeFail: failMemeObj.url
+      };
+    });
+
+    return { questions: finalQuestions, filteredCount };
+  },
+
+  // =========================================================================
+  // СТУДИЯ ПЕРСОНАЖА И ПРОФИЛЯ (БЕЗ ТОРЧАЩЕГО НИЖНЕГО ВИДЖЕТА!)
+  // =========================================================================
+  openGoogleModal() {
+    sfx.click();
+    const modal = document.getElementById('google-modal');
+    if (!modal) return;
+
+    document.getElementById('g-name-input').value = this.user?.name || 'QSHARK';
+    document.getElementById('g-email-input').value = this.user?.email || 'qshark.creator@gmail.com';
+    document.getElementById('g-title-input').value = this.user?.title || '👑 ПОВЕЛИТЕЛЬ АРЕНЫ';
+    document.getElementById('g-home-color').value = this.user?.homeNeon || '#a855f7';
+
+    this.renderAvatarPicker();
+
+    const logoutBtn = document.getElementById('g-logout');
+    if (logoutBtn) logoutBtn.style.display = this.user ? 'inline-block' : 'none';
+    modal.style.display = 'flex';
+  },
+
+  renderAvatarPicker() {
+    const grid = document.getElementById('avatarPickerGrid');
+    if (!grid) return;
+    const currentAv = this.user?.avatar || '🐉';
+    grid.innerHTML = AVATARS_LIST.map(av => `
+      <button type="button" onclick="app.user.avatar='${av}'; app.renderAvatarPicker();"
+        class="h-12 rounded-xl text-2xl flex items-center justify-center border-2 transition-all ${currentAv === av ? 'border-toxicLime bg-toxicLime/20 scale-105' : 'border-purple-800/50 bg-obsidian/70 hover:border-purple-400'}">
+        ${av}
+      </button>
+    `).join('');
+  },
+
+  closeGoogleModal() {
+    const modal = document.getElementById('google-modal');
+    if (modal) modal.style.display = 'none';
+  },
+
+  confirmGoogleLogin() {
+    sfx.win();
+    const name = document.getElementById('g-name-input').value.trim() || 'QSHARK';
+    const email = document.getElementById('g-email-input').value.trim() || 'qshark@gmail.com';
+    const title = document.getElementById('g-title-input').value || '👑 ПОВЕЛИТЕЛЬ АРЕНЫ';
+    const homeNeon = document.getElementById('g-home-color').value || '#a855f7';
+
+    this.user = {
+      name,
+      email,
+      avatar: this.user?.avatar || '🐉',
+      title,
+      homeNeon
+    };
+    localStorage.setItem('pa_user', JSON.stringify(this.user));
+
+    // Если игрок уже в комнате — сразу обновляем его персонажа и титул!
+    if (this.room) {
+      const me = this.getMyPlayer();
+      if (me) {
+        me.name = name.toUpperCase();
+        me.avatar = this.user.avatar;
+        me.title = this.user.title;
+        this.syncState(true);
+      }
+    }
+
+    if (this.view === 'home' || this.view === 'library') {
+      this.applyPersonalHomeTheme();
+    }
+
+    this.closeGoogleModal();
+    showToast(`${this.user.avatar} Персонаж ${name} (${title}) сохранен!`, '✅');
+    this.render();
+  },
+
+  logoutGoogle() {
+    this.user = { name: 'ГОСТЬ', email: '', avatar: '🐉', title: '🔥 ИГРОК АРЕНЫ', homeNeon: '#a855f7' };
+    localStorage.removeItem('pa_user');
+    this.closeGoogleModal();
+    showToast('Профиль сброшен', '👋');
+    this.render();
+  },
+
+  // =========================================================================
+  // СПОСОБНОСТИ И КОНСТРУКТОР (БЕЗ ДОБАВЛЕНИЯ ЧУЖИХ ТЕМ!)
+  // =========================================================================
+  getLockedPerksKey(pin, pid) { return `pa_locked_perks_${pin}_${pid}`; },
+  getUsedPerksList(pin, pid) {
+    try { return JSON.parse(localStorage.getItem(this.getLockedPerksKey(pin, pid)) || '[]'); }
+    catch (e) { return []; }
+  },
+  markPerkUsedPermanently(pin, pid, perkId) {
+    const list = this.getUsedPerksList(pin, pid);
+    if (!list.includes(perkId)) {
+      list.push(perkId);
+      localStorage.setItem(this.getLockedPerksKey(pin, pid), JSON.stringify(list));
+    }
+  },
+  rollRandomPerks(count = 2) {
+    return [...this.perksCatalog].sort(() => 0.5 - Math.random()).slice(0, count).map(p => p.id);
+  },
+
+  spinRoulette(ids) {
+    const ov = document.getElementById('roulette');
+    const names = document.getElementById('rl-names');
+    if (!ov || !names) return;
+    const icons = this.perksCatalog.map(p => p.icon);
+    ov.style.display = 'flex';
+    names.innerHTML = '';
+
+    [0, 1].forEach(i => {
+      const slot = document.getElementById('rl' + i);
+      const t0 = Date.now();
+      const stop = 1100 + i * 650;
+      slot.classList.remove('done');
+      const iv = setInterval(() => {
+        if (Date.now() - t0 > stop) {
+          clearInterval(iv);
+          const pk = this.perksCatalog.find(p => p.id === ids[i]);
+          slot.textContent = pk ? pk.icon : '🐉';
+          slot.classList.add('done');
+          sfx.win();
+          if (pk) names.innerHTML += `<div class="p-2 rounded-xl bg-purple-950/90 border border-purple-500/40"><b class="text-toxicLime">${pk.icon} ${pk.name}</b> — ${pk.desc}</div>`;
+          if (i === 1) setTimeout(() => { ov.style.display = 'none'; }, 2000);
+        } else {
+          slot.textContent = icons[Math.floor(Math.random() * icons.length)];
+          sfx.playTone(300 + Math.random() * 500, 'square', 0.03, 0.04);
+        }
+      }, 75);
+    });
+  },
+
+  saveQuizzes() {
+    try {
+      localStorage.setItem('pa_quizzes', JSON.stringify(this.quizzes));
+      this.updateStorageUsageIndicator();
+    } catch (e) {
+      showToast('Память заполнена! Скачай бэкап (.json) внизу.', '⚠️');
+    }
+  },
+
+  deleteQuiz(idx) {
+    sfx.fail();
+    if (!confirm(`Удалить игру «${this.quizzes[idx].title}»?`)) return;
+    this.quizzes.splice(idx, 1);
+    this.saveQuizzes();
+    this.render();
+  },
+
+  restoreDefaultQuiz() {
+    sfx.win();
+    this.quizzes.push(generateDefaultQuiz(40));
+    this.saveQuizzes();
+    showToast('Базовый пак на 40 карт добавлен!', '📚');
+    this.render();
+  },
+
+  // Изменение числа вопросов БЕЗ подмешивания чужих тем!
+  resizeDraftQuestions(newCount) {
+    const target = Math.max(1, Math.min(100, Number(newCount) || 40));
+    const current = this.draftQuiz.questions;
+    const deckTopic = this.draftQuiz.title || 'Моя тема';
+
+    if (target > current.length) {
+      for (let i = current.length; i < target; i++) {
+        const winM = MEME_CATALOG.win[i % MEME_CATALOG.win.length].url;
+        const failM = MEME_CATALOG.fail[i % MEME_CATALOG.fail.length].url;
+        current.push({
+          id: 'card_' + (i + 1),
+          category: deckTopic.slice(0, 25),
+          text: `Введите ваш вопрос #${i + 1} по теме «${deckTopic}»:`,
+          options: ['Вариант ответа A (верный)', 'Вариант ответа B', 'Вариант ответа C', 'Вариант ответа D'],
+          correct: 0,
+          difficulty: 'MEDIUM',
+          baseScore: 150,
+          memeSuccess: winM,
+          memeFail: failM
+        });
+      }
+    } else if (target < current.length) {
+      current.length = target;
+    }
+    showToast(`Количество карточек вашей темы: ${target} шт.`, '🃏');
+    this.render();
+  },
+
+  addSingleCustomQuestion() {
+    sfx.click();
+    const idx = this.draftQuiz.questions.length;
+    if (idx >= 100) return showToast('Максимум 100 вопросов!', '⚠️');
+    this.draftQuiz.questions.push({
+      id: 'custom_q_' + Date.now(),
+      category: this.draftQuiz.title.slice(0, 22) || 'Своя тема',
+      text: `Новый вопрос #${idx + 1}`,
+      options: ['Вариант A', 'Вариант B', 'Вариант C', 'Вариант D'],
+      correct: 0,
+      difficulty: 'MEDIUM',
+      baseScore: 150,
+      memeSuccess: MEME_CATALOG.win[idx % MEME_CATALOG.win.length].url,
+      memeFail: MEME_CATALOG.fail[idx % MEME_CATALOG.fail.length].url
+    });
+    this.render();
+  },
+
+  randomizeVariedMemesForAllCards() {
+    this.draftQuiz.questions.forEach((q, idx) => {
+      q.memeSuccess = MEME_CATALOG.win[idx % MEME_CATALOG.win.length].url;
+      q.memeFail = MEME_CATALOG.fail[idx % MEME_CATALOG.fail.length].url;
+    });
+    sfx.win();
+    showToast('🎬 Каждому вопросу назначены разные мемы из коллекции (12 шт.)!', '🔥');
+    this.render();
+  },
+
+  // =========================================================================
+  // СЕТЬ И ЛОКАЛЬНЫЙ QR-КОД (БЕЗ БЕСКОНЕЧНОЙ ЗАГРУЗКИ ВКЛАДКИ!)
+  // =========================================================================
+  drawLocalQrCode() {
+    const box = document.getElementById('localQrContainer');
+    if (!box || !this.room || !window.QRCode) return;
+    box.innerHTML = '';
+    const joinUrl = `${window.location.origin}${window.location.pathname}?pin=${this.room.pin}`;
+    try {
+      new QRCode(box, {
+        text: joinUrl,
+        width: 56,
+        height: 56,
+        colorDark: '#000000',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.L
+      });
+    } catch (e) {}
+  },
+
+  connectAllTransports(pin) {
+    if (this.localBroadcast) this.localBroadcast.close();
+    this.localBroadcast = new BroadcastChannel('pa_sync_' + pin);
+    this.localBroadcast.onmessage = (ev) => this.onNetworkMessage(ev.data);
+
+    if (window.mqtt) {
+      try {
+        if (this.mqttClient) this.mqttClient.end(true);
+        const topicState = `philo_arena_v7/${pin}/state`;
+        const topicAction = `philo_arena_v7/${pin}/action`;
+
+        this.mqttClient = mqtt.connect('wss://broker.emqx.io:8084/mqtt', {
+          clientId: 'pa_' + this.localPlayerId + '_' + Math.random().toString(16).slice(2, 6),
+          clean: true,
+          connectTimeout: 8000,
+          reconnectPeriod: 3000
+        });
+
+        this.mqttClient.on('connect', () => {
+          this.netStatus = '🟢 Облако активно (PIN: ' + pin + ')';
+          if (this.isHost) {
+            this.mqttClient.subscribe(topicAction);
+            this.syncState(true);
+          } else {
+            this.mqttClient.subscribe(topicState);
+            if (this.pendingJoinNick) {
+              const joinPacket = {
+                type: 'ACTION',
+                action: {
+                  kind: 'JOIN',
+                  playerId: this.localPlayerId,
+                  name: this.pendingJoinNick,
+                  avatar: this.user?.avatar || '🐉',
+                  title: this.user?.title || '🔥 ИГРОК АРЕНЫ'
+                }
+              };
+              this.mqttClient.publish(topicAction, JSON.stringify(joinPacket));
+            }
+          }
+          this.updateTopStatusBannerOnly();
+        });
+
+        this.mqttClient.on('message', (topic, payload) => {
+          try {
+            const data = JSON.parse(payload.toString());
+            this.onNetworkMessage(data);
+          } catch (e) {}
+        });
+      } catch (e) {}
+    }
+  },
+
+  onNetworkMessage(msg) {
+    if (!msg) return;
+    if (msg.type === 'STATE' && !this.isHost) {
+      const oldPhase = this.room?.phase;
+      this.room = msg.room;
+      this.netStatus = '🟢 Онлайн • Синхронизировано';
+      if (this.room?.quiz?.theme) this.applyRoomThemeColors(this.room.quiz.theme);
+      if (this.room.phase === 'podium' && !sfx.playing()) sfx.startPhonkBeat();
+
+      // Чтобы вопрос НЕ моргал, когда игрок отвечает на вопрос — обновляем только верхний лидерборд, не трогая карточку вопроса!
+      if (this.pState.subPhase === 'question' && this.room.phase !== 'podium' && oldPhase === this.room.phase) {
+        this.updateTopScoreboardOnly();
+      } else {
+        this.render();
+      }
+    } else if (msg.type === 'ACTION' && this.isHost) {
+      this.handlePlayerAction(msg.action);
+    }
+  },
+
+  launchHost(quizIdx = 0) {
+    sfx.click();
+    sfx.stopPhonkBeat();
+    const sourceQuiz = this.quizzes[quizIdx] || generateDefaultQuiz(40);
+    this.ensureQuizTheme(sourceQuiz);
+    const quiz = JSON.parse(JSON.stringify(sourceQuiz));
+    this.applyRoomThemeColors(quiz.theme);
+
+    this.isHost = true;
+    this.resetPersonalState();
+    const pin = String(Math.floor(1000 + Math.random() * 9000));
+    localStorage.removeItem(this.getLockedPerksKey(pin, this.localPlayerId));
+
+    this.room = {
+      pin,
+      phase: 'draft',
+      quiz,
+      players: [
+        {
+          id: this.localPlayerId,
+          name: (this.user?.name || 'ВЕДУЩИЙ').toUpperCase(),
+          avatar: this.user?.avatar || '🐉',
+          title: this.user?.title || '👑 СОЗДАТЕЛЬ АРЕНЫ',
+          score: 0,
+          picked: [],
+          perks: this.rollRandomPerks(2),
+          usedPerks: [],
+          shield: false,
+          statusText: 'Выбирает карту'
+        }
+      ],
+      lastEventBanner: `Комната #${pin} открыта! Выбирайте карточки и отвечайте без очереди!`
+    };
+
+    this.view = 'host';
+    this.connectAllTransports(pin);
+    this.syncState(true);
+    showToast(`Комната #${pin} запущена!`, '🚀');
+  },
+
+  joinRoom(pinInput, nickInput) {
+    sfx.click();
+    const pin = (pinInput || '').trim();
+    const nick = (nickInput || (this.user ? this.user.name : 'DRAGON')).trim().toUpperCase();
+    if (!pin || pin.length < 4) {
+      showToast('Введи 4-значный PIN комнаты!', '⚠️');
+      return;
+    }
+
+    this.isHost = false;
+    this.pendingJoinNick = nick;
+    this.resetPersonalState();
+    this.view = 'player';
+    this.netStatus = `⏳ Подключение к #${pin}...`;
+
+    const saved = localStorage.getItem('pa_room_' + pin);
+    if (saved) {
+      this.room = JSON.parse(saved);
+      if (this.room?.quiz?.theme) this.applyRoomThemeColors(this.room.quiz.theme);
+    }
+
+    this.connectAllTransports(pin);
+    this.sendAction({
+      kind: 'JOIN',
+      playerId: this.localPlayerId,
+      name: nick,
+      avatar: this.user?.avatar || '🐉',
+      title: this.user?.title || '🔥 ИГРОК АРЕНЫ'
+    }, pin);
+    this.render();
+  },
+
+  resetPersonalState() {
+    clearInterval(this.personalTimerId);
+    this.pState = {
+      subPhase: 'grid',
+      cardIdx: null,
+      multiplier: 1,
+      timer: 20,
+      hiddenOptions: [],
+      oracleAnswer: null,
+      lastOutcome: null
+    };
+  },
+
+  sendAction(actionObj, explicitPin = null) {
+    if (this.isHost) {
+      this.handlePlayerAction(actionObj);
+      return;
+    }
+    const packet = { type: 'ACTION', action: actionObj };
+    if (this.localBroadcast) this.localBroadcast.postMessage(packet);
+    const targetPin = explicitPin || (this.room && this.room.pin) || '';
+    if (this.mqttClient && this.mqttClient.connected && targetPin) {
+      this.mqttClient.publish(`philo_arena_v7/${targetPin}/action`, JSON.stringify(packet));
+    }
+  },
+
+  syncState(immediate = false) {
+    if (!this.room) return;
+    // Если мы сейчас отвечаем на вопрос — обновляем только верхнюю панель очков, чтобы вопрос не моргал!
+    if (this.pState.subPhase === 'question' && this.room.phase !== 'podium') {
+      this.updateTopScoreboardOnly();
+    } else {
+      this.render();
+    }
+
+    const publishNow = () => {
+      try { localStorage.setItem('pa_room_' + this.room.pin, JSON.stringify(this.room)); } catch (e) {}
+      const packet = { type: 'STATE', room: this.room };
+      if (this.localBroadcast) this.localBroadcast.postMessage(packet);
+      if (this.mqttClient && this.mqttClient.connected) {
+        this.mqttClient.publish(`philo_arena_v7/${this.room.pin}/state`, JSON.stringify(packet), { retain: true });
+      }
+    };
+
+    if (immediate) {
+      clearTimeout(this.syncTimeoutId);
+      publishNow();
+    } else {
+      clearTimeout(this.syncTimeoutId);
+      this.syncTimeoutId = setTimeout(publishNow, 160);
+    }
+  },
+
+  updateTopStatusBannerOnly() {
+    const el = document.getElementById('liveBannerText');
+    if (el && this.room) el.textContent = this.room.lastEventBanner || '';
+  },
+
+  updateTopScoreboardOnly() {
+    const strip = document.getElementById('liveScoreboardStrip');
+    if (!strip || !this.room) return;
+    const myP = this.getMyPlayer();
+    const sortedPlayers = [...this.room.players].sort((a, b) => b.score - a.score);
+    strip.innerHTML = sortedPlayers.map((p, rank) => `
+      <div class="min-w-[135px] sm:min-w-[155px] p-2 rounded-xl border ${p.id === myP?.id ? 'border-toxicLime bg-toxicLime/10' : 'border-purple-800/50 bg-obsidian/80'} shrink-0">
+        <div class="flex justify-between items-center text-[10px] font-bold text-white">
+          <span class="truncate">#${rank + 1} ${p.avatar || '🐉'} ${p.name}</span>
+          <span>${p.shield ? '🛡️' : ''}</span>
+        </div>
+        <div class="text-base sm:text-xl font-black font-mono ${p.score >= 0 ? 'text-toxicLime' : 'text-crimson'}">${p.score} <span class="text-[9px] text-gray-400">PTS</span></div>
+        <div class="text-[9px] font-mono text-purple-300 truncate">${p.statusText || `Карт: ${p.picked.length}/${this.room.quiz.settings.picksPerPlayer}`}</div>
+      </div>
+    `).join('');
+    this.updateTopStatusBannerOnly();
+  },
+
+  // =========================================================================
+  // ТОЧЕЧНЫЙ ТАЙМЕР ВОПРОСА (БЕЗ ПЕРЕРИСОВКИ ЭКРАНА — ВОПРОС НЕ МОРГАЕТ!)
+  // =========================================================================
+  clickCardOnGrid(cardIdx) {
+    if (!this.room) return;
+    const card = this.room.quiz.questions[cardIdx];
+    const me = this.getMyPlayer();
+    if (!card || card.answered || !me) return;
+
+    const limit = this.room.quiz.settings.picksPerPlayer;
+    if (card.ownerId === me.id) {
+      this.openPersonalWager(cardIdx);
+      return;
+    }
+    if (card.ownerId && card.ownerId !== me.id) {
+      showToast(`Карту #${cardIdx + 1} уже забрал ${card.ownerName}!`, '🔒');
+      return;
+    }
+    if (me.picked.length >= limit) {
+      showToast(`Твой лимит (${limit} карт) выбран! Ответь на свои зеленые карты.`, '⚡');
+      return;
+    }
+
+    sfx.click();
+    this.sendAction({ kind: 'CLAIM_CARD', cardIdx, playerId: this.localPlayerId });
+    this.openPersonalWager(cardIdx);
+  },
+
+  openPersonalWager(cardIdx) {
+    sfx.click();
+    clearInterval(this.personalTimerId);
+    this.pState.cardIdx = cardIdx;
+    this.pState.subPhase = 'wager';
+    this.pState.multiplier = 1;
+    this.pState.hiddenOptions = [];
+    this.pState.oracleAnswer = null;
+    this.render();
+  },
+
+  startPersonalQuestion(mult, sec) {
+    if (mult > 1) sfx.blitz(); else sfx.click();
+    this.pState.multiplier = mult;
+    this.pState.timer = Number(sec) || Number(this.room.quiz.settings.defaultTimerSec);
+    this.pState.subPhase = 'question';
+    this.render(); // Рисуем карточку вопроса ОДИН раз!
+
+    this.sendAction({
+      kind: 'STATUS',
+      playerId: this.localPlayerId,
+      statusText: `Решает #${this.pState.cardIdx + 1} (x${mult})`
+    });
+
+    clearInterval(this.personalTimerId);
+    this.personalTimerId = setInterval(() => {
+      if (this.pState.subPhase !== 'question') {
+        clearInterval(this.personalTimerId);
+        return;
+      }
+      this.pState.timer--;
+
+      // Обновляем ТОЛЬКО текст секунд без перерисовки DOM — ничего не мигает!
+      const timerEl = document.getElementById('liveQuestionTimer');
+      if (timerEl) {
+        timerEl.textContent = `${this.pState.timer}s`;
+        if (this.pState.timer <= 5) {
+          timerEl.classList.remove('text-toxicLime');
+          timerEl.classList.add('text-crimson', 'scale-110');
+        }
+      }
+
+      if (this.pState.timer <= 3 && this.pState.timer > 0) sfx.playTone(680, 'square', 0.05);
+      if (this.pState.timer <= 0) {
+        clearInterval(this.personalTimerId);
+        this.submitPersonalAnswer(-1);
+      }
+    }, 1000);
+  },
+
+  submitPersonalAnswer(optIdx) {
+    clearInterval(this.personalTimerId);
+    const cardIdx = this.pState.cardIdx;
+    const q = this.room.quiz.questions[cardIdx];
+    const me = this.getMyPlayer();
+    const isCorrect = optIdx === Number(q.correct);
+    const pts = Number(q.baseScore) * Number(this.pState.multiplier);
+
+    // Выбираем разнообразные мемы!
+    const winObj = MEME_CATALOG.win[cardIdx % MEME_CATALOG.win.length];
+    const failObj = MEME_CATALOG.fail[cardIdx % MEME_CATALOG.fail.length];
+    const winGif = q.memeSuccess || winObj.url;
+    const failGif = q.memeFail || failObj.url;
+
+    if (isCorrect) {
+      sfx.win();
+      this.pState.lastOutcome = {
+        ok: true,
+        tag: winObj.tag,
+        headline: `+${pts} PTS // СИГМА ОТВЕТ!`,
+        sub: `${me?.avatar || '🐉'} Карта #${cardIdx + 1} взята на множителе x${this.pState.multiplier}!`,
+        gif: winGif
+      };
+    } else {
+      sfx.fail();
+      const shielded = me && me.shield;
+      this.pState.lastOutcome = {
+        ok: false,
+        tag: failObj.tag,
+        headline: optIdx === -1 ? 'ВРЕМЯ ВЫШЛО!' : 'ФАТАЛЬНЫЙ ПРОМАХ!',
+        sub: `Верный ответ: «${q.options[q.correct]}». ${shielded ? '🛡️ Щит Дракона спас твои очки!' : `Штраф -${pts} PTS`}`,
+        gif: failGif
+      };
+    }
+
+    this.pState.subPhase = 'meme';
+    this.sendAction({
+      kind: 'RESOLVE_CARD',
+      playerId: this.localPlayerId,
+      cardIdx,
+      isCorrect,
+      pts
+    });
+    this.render();
+  },
+
+  usePersonalPerk(perkId) {
+    if (!this.room) return;
+    const me = this.getMyPlayer();
+    if (!me) return;
+
+    const alreadyUsedLocal = this.getUsedPerksList(this.room.pin, this.localPlayerId);
+    if (me.usedPerks.includes(perkId) || alreadyUsedLocal.includes(perkId)) {
+      showToast('🔒 Эта способность уже использована в этой игре!', '⚠️');
+      return;
+    }
+
+    if (['fifty', 'oracle', 'time', 'double', 'triple'].includes(perkId) && this.pState.subPhase !== 'question') {
+      showToast('Сначала открой вопрос, чтобы применить эту способность!', '⚠️');
+      return;
+    }
+
+    this.markPerkUsedPermanently(this.room.pin, this.localPlayerId, perkId);
+    if (!me.usedPerks.includes(perkId)) me.usedPerks.push(perkId);
+
+    sfx.blitz();
+    const q = this.room.quiz.questions[this.pState.cardIdx];
+
+    if (perkId === 'fifty' && q) {
+      const wrong = [0, 1, 2, 3].filter(i => i !== Number(q.correct));
+      this.pState.hiddenOptions = wrong.slice(0, 2);
+    } else if (perkId === 'oracle' && q) {
+      this.pState.oracleAnswer = Number(q.correct);
+    } else if (perkId === 'double') {
+      this.pState.multiplier *= 2;
+    } else if (perkId === 'triple') {
+      this.pState.multiplier *= 3;
+    } else if (perkId === 'time') {
+      this.pState.timer += 7;
+    }
+
+    this.sendAction({ kind: 'PERK', playerId: this.localPlayerId, perkId });
+    this.render();
+  },
+
+  handlePlayerAction(act) {
+    if (!this.room) return;
+    const r = this.room;
+
+    if (act.kind === 'JOIN') {
+      let existing = r.players.find(p => p.id === act.playerId);
+      if (!existing) {
+        r.players.push({
+          id: act.playerId,
+          name: act.name,
+          avatar: act.avatar || '🐉',
+          title: act.title || '🔥 ИГРОК АРЕНЫ',
+          score: 0,
+          picked: [],
+          perks: this.rollRandomPerks(2),
+          usedPerks: [],
+          shield: false,
+          statusText: 'В игре'
+        });
+        r.lastEventBanner = `${act.avatar || '🐉'} ${act.name} подключился к арене!`;
+        sfx.win();
+      } else {
+        existing.name = act.name;
+        if (act.avatar) existing.avatar = act.avatar;
+        if (act.title) existing.title = act.title;
+      }
+      this.syncState(true);
+    }
+
+    if (act.kind === 'CLAIM_CARD') {
+      const card = r.quiz.questions[act.cardIdx];
+      const p = r.players.find(x => x.id === act.playerId);
+      if (card && p && !card.ownerId && !card.answered) {
+        card.ownerId = p.id;
+        card.ownerName = p.name;
+        if (!p.picked.includes(act.cardIdx)) p.picked.push(act.cardIdx);
+        p.statusText = `Взял карту #${act.cardIdx + 1}`;
+        r.lastEventBanner = `🃏 ${p.name} забрал карту #${act.cardIdx + 1}`;
+        this.syncState();
+      }
+    }
+
+    if (act.kind === 'STATUS') {
+      const p = r.players.find(x => x.id === act.playerId);
+      if (p) {
+        p.statusText = act.statusText;
+        this.syncState();
+      }
+    }
+
+    if (act.kind === 'RESOLVE_CARD') {
+      const card = r.quiz.questions[act.cardIdx];
+      const p = r.players.find(x => x.id === act.playerId);
+      if (card && p) {
+        card.answered = true;
+        card.ownerId = p.id;
+        card.ownerName = p.name;
+        if (act.isCorrect) {
+          p.score += act.pts;
+          p.statusText = `✅ +${act.pts} PTS (#${act.cardIdx + 1})`;
+          r.lastEventBanner = `🔥 ${p.name} ответил верно и забрал +${act.pts} PTS!`;
+        } else {
+          if (r.quiz.settings.penaltyOnFail) {
+            if (p.shield) {
+              p.shield = false;
+              p.statusText = `🛡️ Щит спас очки`;
+              r.lastEventBanner = `🛡️ Щит Дракона спас ${p.name} от штрафа!`;
+            } else {
+              p.score -= act.pts;
+              p.statusText = `❌ -${act.pts} PTS`;
+              r.lastEventBanner = `💀 ${p.name} ошибся на ставке (-${act.pts} PTS)`;
+            }
+          }
+        }
+        this.syncState();
+      }
+    }
+
+    if (act.kind === 'PERK') {
+      const p = r.players.find(x => x.id === act.playerId);
+      if (!p) return;
+      if (!p.usedPerks.includes(act.perkId)) p.usedPerks.push(act.perkId);
+
+      if (act.perkId === 'shield') {
+        p.shield = true;
+        r.lastEventBanner = `🛡️ ${p.name} активировал Щит Дракона!`;
+      } else if (act.perkId === 'nihilism') {
+        const sorted = [...r.players].sort((a, b) => b.score - a.score);
+        if (sorted[0]) {
+          sorted[0].score -= 150;
+          r.lastEventBanner = `💀 ${p.name} наслал Нигилизм на лидера ${sorted[0].name} (-150 PTS)!`;
+        }
+      } else if (act.perkId === 'bomb') {
+        r.players.forEach(x => { if (x.id !== p.id) x.score -= 80; });
+        r.lastEventBanner = `💣 ${p.name} взорвал арену (-80 PTS всем соперникам)!`;
+      } else if (act.perkId === 'vampire') {
+        const others = r.players.filter(x => x.id !== p.id);
+        if (others.length) {
+          const victim = others[Math.floor(Math.random() * others.length)];
+          victim.score -= 100;
+          p.score += 100;
+          r.lastEventBanner = `🧛 ${p.name} украл 100 PTS у ${victim.name}!`;
+        }
+      } else if (act.perkId === 'steal') {
+        r.quiz.settings.picksPerPlayer += 2;
+        r.lastEventBanner = `🥷 ${p.name} расширил лимит карт (+2)!`;
+      }
+      this.syncState(true);
+    }
+  },
+
+  addBot() {
+    const bots = [
+      { name: 'СОКРАТ_SIGMA', avatar: '👑', title: '🧠 СВЕРХЧЕЛОВЕК НИЦШЕ' },
+      { name: 'КАНТ_PRO', avatar: '⚡', title: '⚡ БОГ БЛИЦА X5' },
+      { name: 'НИЦШЕ_PHONK', avatar: '💀', title: '🔥 СИГМА МЫСЛИТЕЛЬ' },
+      { name: 'ДИОГЕН_777', avatar: '🥷', title: '🥷 НОЧНОЙ ЭКСПРОПРИАТОР' }
+    ];
+    const b = bots[this.room.players.length % bots.length];
+    const botId = 'bot_' + Date.now();
+    this.handlePlayerAction({ kind: 'JOIN', playerId: botId, name: b.name, avatar: b.avatar, title: b.title });
+    const freeIdx = this.room.quiz.questions.findIndex(q => !q.ownerId && !q.answered);
+    if (freeIdx >= 0) {
+      this.handlePlayerAction({ kind: 'CLAIM_CARD', cardIdx: freeIdx, playerId: botId });
+      setTimeout(() => {
+        this.handlePlayerAction({ kind: 'RESOLVE_CARD', playerId: botId, cardIdx: freeIdx, isCorrect: Math.random() > 0.35, pts: 300 });
+      }, 1500);
+    }
+  },
+
+  triggerPhonkPodium() {
+    clearInterval(this.personalTimerId);
+    this.room.phase = 'podium';
+    sfx.startPhonkBeat();
+    this.syncState(true);
+  },
+
+  getMyPlayer() {
+    if (!this.room) return null;
+    return this.room.players.find(p => p.id === this.localPlayerId) || this.room.players[0];
+  },
+
+  generateRandomNick() {
+    sfx.click();
+    const prefixes = ['Phonk', 'Cyber', 'Dragon', 'Sigma', 'Kant', 'Nietzsche', 'Shadow'];
+    const suffixes = ['Lord', 'Slayer', 'King', 'Boss', 'Hunter', 'Samurai'];
+    const nick = `${prefixes[Math.floor(Math.random() * prefixes.length)]}${suffixes[Math.floor(Math.random() * suffixes.length)]}_${Math.floor(Math.random() * 90 + 10)}`;
+    const inp = document.getElementById('nicknameInput');
+    if (inp) inp.value = nick;
+  },
+
+  setPresetTheme(neonHex, secHex) {
+    this.draftQuiz.theme.neonColor = neonHex;
+    this.draftQuiz.theme.secondaryColor = secHex;
+    this.applyRoomThemeColors(this.draftQuiz.theme);
+    this.render();
+  },
+
+  saveBuilderQuiz() {
+    sfx.win();
+    this.draftQuiz.title = document.getElementById('b-title')?.value || 'Dragon Arena';
+    this.draftQuiz.phonkGif = document.getElementById('b-phonk-gif')?.value || MEME_CATALOG.win[0].url;
+    this.draftQuiz.podiumStyle = document.getElementById('b-podium-style')?.value || 'gold';
+    this.draftQuiz.theme.billboardTitle = document.getElementById('b-bb-title')?.value || 'PHILO ARENA // TWIN DRAGON ENGINE';
+    this.draftQuiz.theme.billboardSub = document.getElementById('b-bb-sub')?.value || '';
+    this.draftQuiz.theme.neonColor = document.getElementById('b-neon-color')?.value || '#a855f7';
+
+    this.draftQuiz.settings.picksPerPlayer = Number(document.getElementById('b-picks')?.value || 6);
+    this.draftQuiz.settings.defaultTimerSec = Number(document.getElementById('b-timer')?.value || 20);
+    this.draftQuiz.settings.blitz = [0, 1, 2].map(i => ({
+      sec: Number(document.getElementById('b-bs' + i)?.value) || 10,
+      mult: Number(document.getElementById('b-bm' + i)?.value) || 2
+    }));
+
+    const existingIdx = this.quizzes.findIndex(q => q.id === this.draftQuiz.id);
+    if (existingIdx >= 0) this.quizzes[existingIdx] = JSON.parse(JSON.stringify(this.draftQuiz));
+    else this.quizzes.unshift(JSON.parse(JSON.stringify(this.draftQuiz)));
+
+    this.saveQuizzes();
+    showToast('💾 Игра, подиум и кастомная тема сохранены!', '🔥');
+    this.setView('library');
+  },
+
+  // =========================================================================
+  // РЕНДЕРИНГ ИНТЕРФЕЙСА
+  // =========================================================================
+  render() {
+    const hdr = document.getElementById('header-controls');
+    const main = document.getElementById('main-view');
+    const onlineCount = this.room ? this.room.players.length : 1;
+
+    hdr.innerHTML = `
+      <div class="px-2.5 py-1.5 rounded-xl bg-emerald-950/70 border border-toxicLime/50 text-toxicLime font-mono text-[10px] sm:text-xs flex items-center gap-1.5">
+        <span class="w-2 h-2 rounded-full bg-toxicLime animate-ping"></span>
+        <span>В комнате: <b>${onlineCount}</b></span>
+      </div>
+
+      ${this.room ? `
+        <span class="px-2.5 py-1.5 rounded-xl bg-purple-950/80 border border-purple-400/50 text-white font-mono font-bold">PIN: ${this.room.pin}</span>
+        <button onclick="app.setView('host')" class="px-2.5 py-1.5 rounded-xl ${this.view === 'host' ? 'theme-neon-bg text-white' : 'bg-purple-950/60 text-purple-200'} border border-purple-500/30" title="Экран проектора">🖥</button>
+        <button onclick="app.setView('player')" class="px-2.5 py-1.5 rounded-xl ${this.view === 'player' ? 'theme-neon-bg text-white' : 'bg-purple-950/60 text-purple-200'} border border-purple-500/30" title="Экран телефона">📱</button>
+        <button onclick="app.leaveCurrentRoom()" class="px-2.5 py-1.5 rounded-xl bg-crimson/80 hover:bg-crimson text-white font-bold" title="Закрыть текущую игру">🚪 Выйти</button>
+      ` : ''}
+
+      <button onclick="document.getElementById('customAudioFileInput').click()" class="px-2.5 py-1.5 rounded-xl bg-purple-950/70 hover:bg-purple-900 border border-toxicLime/40 text-toxicLime flex items-center gap-1">
+        <span>🎵</span><span class="hidden md:inline">${sfx.customTrackName ? sfx.customTrackName.slice(0, 8) + '..' : '+MP3'}</span>
+      </button>
+
+      <button onclick="sfx.toggleMusic()" class="px-2.5 py-1.5 rounded-xl ${sfx.playing() ? 'bg-toxicLime text-gray-950 font-black sound-active-btn' : 'bg-purple-950/60 text-purple-200'} border border-purple-500/30">
+        ${sfx.playing() ? '🔊 STOP' : '🔈 БИТ'}
+      </button>
+
+      <button onclick="app.setView('library')" class="px-2.5 py-1.5 rounded-xl bg-purple-950/60 border border-purple-500/30 text-gray-200">📚 (${this.quizzes.length})</button>
+      <button onclick="app.setView('builder')" class="px-2.5 py-1.5 rounded-xl bg-purple-950/60 border border-purple-500/30 text-gray-200">⚙️</button>
+
+      <button onclick="app.openGoogleModal()" class="px-2.5 py-1.5 rounded-xl theme-neon-bg text-white flex items-center gap-1.5 theme-neon-shadow">
+        <span>${this.user?.avatar || '🐉'}</span>
+        <span class="font-mono text-[10px] max-w-[80px] truncate">${this.user ? this.user.name : 'Профиль'}</span>
+      </button>
+    `;
+
+    // ================= 1. ГЛАВНЫЙ ЭКРАН =================
+    if (this.view === 'home') {
+      const activeQuiz = this.quizzes[0] || generateDefaultQuiz(40);
+      this.ensureQuizTheme(activeQuiz);
+      const savedLogo = localStorage.getItem('pa_custom_logo');
+
+      main.innerHTML = `
+        <div class="space-y-5">
+          <!-- БИЛБОРД ГЛАВНОЙ СТРАНИЦЫ -->
+          <div class="glass-panel rounded-3xl p-4 sm:p-6 border-2 theme-neon-border relative overflow-hidden">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+              <div class="flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
+                <div onclick="document.getElementById('customLogoFileInput').click()" class="cursor-pointer shrink-0 group relative" title="Нажми, чтобы выбрать картинку логотипа">
+                  ${savedLogo ? `
+                    <img src="${savedLogo}" class="w-28 h-16 sm:w-36 sm:h-20 rounded-2xl object-cover border-2 border-toxicLime/60 shadow-[0_0_25px_rgba(168,85,247,0.6)]" alt="PA Banner">
+                  ` : `
+                    <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-obsidian/90 border-2 border-toxicLime/50 flex items-center justify-center shadow-[0_0_28px_rgba(168,85,247,0.65)]">
+                      <span class="font-display font-black text-2xl sm:text-3xl bg-gradient-to-br from-purple-400 via-fuchsia-300 to-toxicLime bg-clip-text text-transparent">PA</span>
+                    </div>
+                  `}
+                </div>
+
+                <div>
+                  <div class="inline-flex items-center gap-2 px-3 py-0.5 rounded-full bg-purple-950/90 border border-toxicLime/40 text-[10px] font-mono text-toxicLime uppercase mb-1.5">
+                    <span>${this.user?.avatar || '🐉'}</span>
+                    <span>${this.user?.name || 'QSHARK'} • ${this.user?.title || '👑 ПОВЕЛИТЕЛЬ АРЕНЫ'}</span>
+                  </div>
+                  <h2 class="text-lg sm:text-3xl font-black font-display text-white tracking-wide uppercase">
+                    PHILO ARENA // TWIN DRAGON ENGINE
+                  </h2>
+                  <p class="text-xs sm:text-sm text-purple-200 mt-0.5">Никакого мигания • Кастомизация Персонажа и Подиума • 12 Мемов</p>
+                </div>
+              </div>
+
+              <div class="flex flex-col items-center bg-obsidian/90 p-2.5 rounded-2xl border border-purple-800/50 w-full md:w-auto">
+                <canvas id="heroBassCanvas" width="210" height="40" class="rounded"></canvas>
+                <div class="flex items-center gap-3 mt-1.5 text-[10px] font-mono text-purple-300">
+                  <button onclick="sfx.toggleMusic()" class="text-toxicLime font-bold hover:underline">${sfx.playing() ? '⏹ Стоп бит' : '▶ Включить бас'}</button>
+                  <span>•</span>
+                  <button onclick="app.openGoogleModal()" class="hover:text-white underline">🎨 Мой Персонаж и Цвет</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-stretch">
+            <!-- ЛЕВАЯ КАРТОЧКА -->
+            <div class="lg:col-span-7 glass-panel rounded-3xl p-5 sm:p-8 flex flex-col justify-between">
+              <div>
+                <div class="flex items-center justify-between gap-2 mb-3">
+                  <span class="font-mono text-xs text-toxicLime font-bold tracking-widest uppercase">⚡ MULTIPLAYER ARENA // P2P + CLOUD</span>
+                  <span class="text-[11px] font-mono text-purple-300">До 100 вопросов</span>
+                </div>
+                <h2 class="text-2xl sm:text-4xl md:text-5xl font-black font-display text-white leading-tight mb-4">
+                  START WITH CLARITY.<br>
+                  <span class="bg-gradient-to-r from-purple-300 via-fuchsia-300 to-toxicLime bg-clip-text text-transparent">CRUSH THE TOP-3.</span>
+                </h2>
+                <p class="text-gray-300 text-xs sm:text-base leading-relaxed mb-6">
+                  Загружай презентацию (<b>.PPTX / .PDF</b>) — перед стартом выбери нужное количество вопросов и сложность, а умный фильтр уберет КАПСЛОК и чужие темы!
+                </p>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-6">
+                  <div onclick="document.getElementById('slideImportInput').click()" class="p-3.5 rounded-2xl bg-purple-950/50 hover:bg-purple-900/70 border border-amber-400/50 cursor-pointer transition-all">
+                    <div class="text-xl mb-1">🧠</div>
+                    <div class="text-xs font-black text-amber-300 uppercase">ИИ-Импорт Слайдов</div>
+                    <div class="text-[11px] text-gray-300">Выбор числа вопросов, сложности и без капса</div>
+                  </div>
+                  <div onclick="app.openGoogleModal()" class="p-3.5 rounded-2xl bg-purple-950/50 hover:bg-purple-900/70 border border-toxicLime/40 cursor-pointer transition-all">
+                    <div class="text-xl mb-1">${this.user?.avatar || '🐉'}</div>
+                    <div class="text-xs font-black text-toxicLime uppercase">Мой Персонаж</div>
+                    <div class="text-[11px] text-gray-300 truncate">${this.user?.title || 'Выбери аватар и неон'}</div>
+                  </div>
+                  <div onclick="app.setView('builder')" class="p-3.5 rounded-2xl bg-purple-950/50 hover:bg-purple-900/70 border border-purple-400/40 cursor-pointer transition-all">
+                    <div class="text-xl mb-1">🏆</div>
+                    <div class="text-xs font-black text-purple-300 uppercase">Кастом Игры</div>
+                    <div class="text-[11px] text-gray-300">12 Мемов, Подиум и свои вопросы</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex flex-col sm:flex-row gap-3 pt-4 border-t border-purple-900/40">
+                <button onclick="app.launchHost(0)" class="cta-lime-glow flex-1 py-4 px-5 rounded-2xl text-gray-950 font-black text-sm sm:text-base tracking-wide">
+                  ▶ ЗАПУСТИТЬ НА ПРОЕКТОРЕ (${activeQuiz.questions.length} КАРТ)
+                </button>
+                <button onclick="app.setView('builder')" class="py-4 px-5 rounded-2xl bg-purple-950/70 hover:bg-purple-900 border border-purple-500/40 text-purple-200 font-bold text-sm">
+                  ⚙️ КОНСТРУКТОР
+                </button>
+              </div>
+            </div>
+
+            <!-- ПРАВАЯ КАРТОЧКА -->
+            <div class="lg:col-span-5 glass-panel rounded-3xl p-5 sm:p-8 flex flex-col justify-between">
+              <div>
+                <div class="flex items-center justify-between gap-2 mb-2">
+                  <span class="font-mono text-xs theme-neon-text font-bold uppercase">ПОДКЛЮЧЕНИЕ С ТЕЛЕФОНА</span>
+                  <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-950/90 border border-toxicLime/50 text-[10px] font-mono text-toxicLime">
+                    <span class="w-1.5 h-1.5 rounded-full bg-toxicLime animate-ping"></span>
+                    В комнате: ${onlineCount} игр.
+                  </span>
+                </div>
+
+                <h2 class="text-2xl sm:text-3xl font-black font-display text-white mb-2">ВЛЕТЕТЬ В КОМНАТУ</h2>
+                <p class="text-gray-400 text-xs mb-5">Введи 4-значный PIN с экрана проектора:</p>
+
+                <div class="space-y-3.5">
+                  <div>
+                    <label class="block text-xs font-mono font-bold text-purple-300 uppercase mb-1">PIN КОМНАТЫ</label>
+                    <input type="text" id="pinInput" maxlength="4" inputmode="numeric" placeholder="0000" value="${this.room ? this.room.pin : ''}"
+                      class="w-full py-3 px-4 rounded-xl bg-obsidian/90 border-2 border-purple-800/70 focus:border-toxicLime text-toxicLime font-mono text-2xl font-bold text-center tracking-widest focus:outline-none">
+                  </div>
+                  <div>
+                    <label class="block text-xs font-mono font-bold text-purple-300 uppercase mb-1">ТВОЙ НИКНЕЙМ И ПЕРСОНАЖ (${this.user?.avatar || '🐉'})</label>
+                    <input type="text" id="nicknameInput" maxlength="16" placeholder="Никнейм" value="${this.user ? this.user.name : 'QSHARK'}"
+                      class="w-full py-3 px-4 rounded-xl bg-obsidian/90 border-2 border-purple-800/70 focus:border-purple-400 text-white text-sm font-bold focus:outline-none">
+                  </div>
+                  <div class="flex justify-between items-center">
+                    <button type="button" onclick="app.openGoogleModal()" class="text-xs text-toxicLime underline">🐉 Сменить персонажа / титул</button>
+                    <button type="button" onclick="app.generateRandomNick()" class="text-xs text-purple-400 underline">🎲 Случайный ник</button>
+                  </div>
+
+                  <button onclick="app.joinRoom(document.getElementById('pinInput').value, document.getElementById('nicknameInput').value)"
+                    class="cta-violet-glow w-full py-4 rounded-2xl text-white font-black text-base tracking-wide">
+                    ПОДКЛЮЧИТЬСЯ К БОЮ →
+                  </button>
+                </div>
+              </div>
+
+              <div class="mt-5 pt-3 border-t border-purple-900/30 flex items-center justify-between text-[11px] text-gray-400 font-mono">
+                <span>🟢 Без мигания таймера</span>
+                <span class="text-purple-300">12 МЕМОВ FULL HD</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    // ================= 2. БИБЛИОТЕКА ИГР =================
+    if (this.view === 'library') {
+      main.innerHTML = `
+        <div class="glass-panel rounded-3xl p-4 sm:p-8">
+          <div class="flex flex-wrap justify-between items-center gap-3 pb-5 border-b border-purple-900/40 mb-5">
+            <div>
+              <h2 class="text-xl sm:text-3xl font-black font-display text-white">МОЯ БИБЛИОТЕКА ИГР</h2>
+              <p class="text-xs text-purple-300 font-mono mt-0.5">Каждая игра хранит свою тему неона, подиум и вопросы</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button onclick="document.getElementById('slideImportInput').click()" class="px-3.5 py-2 rounded-xl bg-amber-400 text-gray-950 font-black text-xs">📄 Создать из Презентации (.PPTX/.PDF)</button>
+              <button onclick="app.exportQuizzesJson()" class="px-3 py-2 rounded-xl bg-purple-950 border border-toxicLime/40 text-toxicLime font-bold text-xs">📥 Скачать .JSON</button>
+              <button onclick="document.getElementById('importJsonInput').click()" class="px-3 py-2 rounded-xl bg-purple-950 border border-purple-500/40 text-purple-200 font-bold text-xs">📤 Загрузить .JSON</button>
+              <button onclick="app.draftQuiz = generateDefaultQuiz(20); app.draftQuiz.id = 'custom_' + Date.now(); app.setView('builder')" class="px-4 py-2 rounded-xl cta-lime-glow text-gray-950 font-black text-xs">+ НОВАЯ ИГРА</button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            ${this.quizzes.map((q, i) => `
+              <div class="p-5 rounded-2xl bg-purple-950/40 border border-purple-500/30 flex flex-col justify-between">
+                <div>
+                  <div class="flex justify-between items-center">
+                    <span class="px-2.5 py-0.5 rounded-full bg-toxicLime/20 text-toxicLime font-mono text-xs font-bold">${q.questions.length} КАРТ</span>
+                    <span class="w-4 h-4 rounded-full border border-white" style="background:${q.theme?.neonColor || '#a855f7'}"></span>
+                  </div>
+                  <h3 class="text-lg font-black text-white mt-2 mb-1">${q.title}</h3>
+                  <p class="text-xs text-gray-400 mb-4">Лимит: ${q.settings.picksPerPlayer} карт/игрока • Подиум: ${(q.podiumStyle || 'gold').toUpperCase()}</p>
+                </div>
+                <div class="flex gap-2">
+                  <button onclick="app.launchHost(${i})" class="flex-1 py-2.5 rounded-xl cta-lime-glow text-gray-950 font-black text-xs">▶ СТАРТ</button>
+                  <button onclick="app.ensureQuizTheme(app.quizzes[${i}]); app.draftQuiz = JSON.parse(JSON.stringify(app.quizzes[${i}])); app.setView('builder')" class="px-3.5 py-2.5 rounded-xl bg-purple-900/60 text-white text-xs">✎</button>
+                  <button onclick="app.deleteQuiz(${i})" class="px-3.5 py-2.5 rounded-xl bg-crimson text-white text-xs">🗑</button>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    // ================= 3. КОНСТРУКТОР И КАСТОМИЗАЦИЯ =================
+    if (this.view === 'builder') {
+      const qz = this.draftQuiz;
+      this.ensureQuizTheme(qz);
+
+      main.innerHTML = `
+        <div class="glass-panel rounded-3xl p-4 sm:p-8 space-y-6">
+          <div class="flex flex-wrap justify-between items-center gap-3 pb-4 border-b border-purple-900/40">
+            <div>
+              <span class="text-xs font-mono text-toxicLime uppercase">FULL CUSTOM STUDIO // СОЗДАЙ СВОЮ ИГРУ</span>
+              <h2 class="text-xl sm:text-3xl font-black font-display text-white">КОНСТРУКТОР ВОПРОСОВ, ПОДИУМА И МЕМОВ</h2>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button onclick="document.getElementById('slideImportInput').click()" class="px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-gray-950 font-black text-xs flex items-center gap-1.5 shadow-lg">
+                🧠 ИМПОРТ ИЗ ПРЕЗЕНТАЦИИ (.PPTX / .PDF)
+              </button>
+              <button onclick="app.saveBuilderQuiz()" class="px-6 py-2.5 rounded-xl cta-lime-glow text-gray-950 font-black text-xs sm:text-sm">
+                💾 СОХРАНИТЬ ИГРУ
+              </button>
+            </div>
+          </div>
+
+          <!-- БЛОК 1: ЦВЕТ КОМНАТЫ, ПОДИУМ И БИЛБОРД -->
+          <div class="p-4 rounded-2xl bg-obsidian/80 border border-purple-700/40 space-y-4">
+            <div class="text-xs font-mono text-toxicLime font-bold uppercase">1. Дизайн этой комнаты и Подиума Топ-3 (Включается только во время этой игры):</div>
+            <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+              <div>
+                <label class="text-xs font-mono text-purple-300">Название игры</label>
+                <input id="b-title" class="w-full mt-1 py-2 px-3 rounded-xl bg-purple-950/40 border border-purple-700/50 text-white text-sm font-bold" value="${qz.title}">
+              </div>
+              <div>
+                <label class="text-xs font-mono text-purple-300">Заголовок Билборда</label>
+                <input id="b-bb-title" class="w-full mt-1 py-2 px-3 rounded-xl bg-purple-950/40 border border-purple-700/50 text-white text-sm" value="${qz.theme.billboardTitle}">
+              </div>
+              <div>
+                <label class="text-xs font-mono text-purple-300">Подзаголовок Билборда</label>
+                <input id="b-bb-sub" class="w-full mt-1 py-2 px-3 rounded-xl bg-purple-950/40 border border-purple-700/50 text-white text-sm" value="${qz.theme.billboardSub}">
+              </div>
+              <div>
+                <label class="text-xs font-mono text-amber-300">Стиль Подиума Топ-3</label>
+                <select id="b-podium-style" class="w-full mt-1 py-2 px-3 rounded-xl bg-purple-950/60 border border-purple-700/50 text-white text-xs font-bold">
+                  <option value="gold" ${qz.podiumStyle === 'gold' ? 'selected' : ''}>👑 Золотой Олимп</option>
+                  <option value="dragon" ${qz.podiumStyle === 'dragon' ? 'selected' : ''}>🐉 Кибер-Дракон (Неон)</option>
+                  <option value="crimson" ${qz.podiumStyle === 'crimson' ? 'selected' : ''}>🩸 Кровавый Трон</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-between gap-3 pt-2">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-xs font-mono text-gray-300">Неон комнаты:</span>
+                <input type="color" id="b-neon-color" value="${qz.theme.neonColor}" onchange="app.setPresetTheme(this.value, '#22c55e')" class="w-9 h-9 rounded cursor-pointer bg-transparent border-0">
+                <button onclick="app.setPresetTheme('#a855f7','#22c55e')" class="px-2.5 py-1 rounded-lg bg-purple-600 text-white text-xs font-bold">Дракон</button>
+                <button onclick="app.setPresetTheme('#22c55e','#eab308')" class="px-2.5 py-1 rounded-lg bg-emerald-500 text-black text-xs font-bold">Лайм</button>
+                <button onclick="app.setPresetTheme('#ff2e54','#06b6d4')" class="px-2.5 py-1 rounded-lg bg-rose-600 text-white text-xs font-bold">Кибер-Кровь</button>
+                <button onclick="app.setPresetTheme('#06b6d4','#a855f7')" class="px-2.5 py-1 rounded-lg bg-cyan-500 text-black text-xs font-bold">Циан</button>
+              </div>
+
+              <div class="flex flex-wrap gap-2">
+                <button onclick="app.randomizeVariedMemesForAllCards()" class="px-3.5 py-2 rounded-xl bg-purple-700 hover:bg-purple-600 text-white font-bold text-xs">
+                  🎬 Раздать 12 разных мемов всем картам
+                </button>
+                <button onclick="document.getElementById('customAudioFileInput').click()" class="px-3.5 py-2 rounded-xl bg-purple-900/70 border border-toxicLime text-toxicLime font-bold text-xs">
+                  🎵 ${sfx.customTrackName || '+Свой MP3'}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- БЛОК 2: КОЛИЧЕСТВО ВОПРОСОВ (СТРОГО ПО ТВОЕЙ ТЕМЕ БЕЗ ЧУЖИХ ВОПРОСОВ!) -->
+          <div class="p-4 rounded-2xl bg-obsidian/80 border border-purple-700/40">
+            <div class="flex flex-wrap items-center justify-between gap-4 mb-3">
+              <span class="text-xs font-mono text-toxicLime font-bold uppercase">2. Количество вопросов в твоей игре: <b id="qCountLbl" class="text-white text-base">${qz.questions.length}</b> / 100</span>
+              <div class="flex items-center gap-2 flex-wrap">
+                <input type="range" min="1" max="100" value="${qz.questions.length}" class="w-36 sm:w-44 accent-emerald-400"
+                       oninput="document.getElementById('qCountLbl').textContent=this.value"
+                       onchange="app.resizeDraftQuestions(this.value)">
+                <button onclick="app.addSingleCustomQuestion()" class="px-3 py-1.5 rounded-lg bg-toxicLime text-black font-black text-xs">+ Добавить 1 свой вопрос</button>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              <div><label class="text-[11px] font-mono text-gray-400">Карт на игрока</label><input id="b-picks" type="number" min="1" max="100" class="w-full mt-1 py-1.5 px-2.5 rounded-xl bg-purple-950/40 border border-purple-800/50 text-white font-mono text-sm" value="${qz.settings.picksPerPlayer}"></div>
+              <div><label class="text-[11px] font-mono text-gray-400">Таймер (сек)</label><input id="b-timer" type="number" class="w-full mt-1 py-1.5 px-2.5 rounded-xl bg-purple-950/40 border border-purple-800/50 text-white font-mono text-sm" value="${qz.settings.defaultTimerSec}"></div>
+              ${[0, 1, 2].map(i => {
+                const b = (qz.settings.blitz || [{ sec: 5, mult: 5 }, { sec: 10, mult: 3 }, { sec: 15, mult: 2 }])[i] || { sec: 10, mult: 2 };
+                return `
+                  <div><label class="text-[11px] font-mono text-crimson">Блиц ${i + 1} (с)</label><input id="b-bs${i}" type="number" class="w-full mt-1 py-1.5 px-2.5 rounded-xl bg-purple-950/40 border border-purple-800/50 text-white font-mono text-sm" value="${b.sec}"></div>
+                  <div><label class="text-[11px] font-mono text-toxicLime">Множитель x</label><input id="b-bm${i}" type="number" class="w-full mt-1 py-1.5 px-2.5 rounded-xl bg-purple-950/40 border border-purple-800/50 text-white font-mono text-sm" value="${b.mult}"></div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+
+          <!-- БЛОК 3: КАСТОМИЗАЦИЯ КАЖДОГО ВОПРОСА -->
+          <div class="space-y-3 max-h-[440px] overflow-y-auto pr-1">
+            ${qz.questions.map((item, idx) => `
+              <div class="p-3.5 rounded-2xl bg-obsidian/90 border border-purple-800/40 space-y-2.5">
+                <div class="flex flex-wrap justify-between items-center gap-2">
+                  <span class="font-mono text-xs font-bold text-toxicLime">КАРТА #${idx + 1}</span>
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <input class="py-1 px-2 rounded bg-purple-950/50 border border-purple-700/40 text-xs text-purple-200 w-32" placeholder="Категория" value="${item.category}" onchange="app.draftQuiz.questions[${idx}].category = this.value">
+                    <select class="py-1 px-2 rounded bg-purple-950/50 border border-purple-700/40 text-xs text-amber-300" onchange="app.draftQuiz.questions[${idx}].difficulty = this.value">
+                      <option value="EASY" ${item.difficulty === 'EASY' ? 'selected' : ''}>EASY</option>
+                      <option value="MEDIUM" ${item.difficulty === 'MEDIUM' ? 'selected' : ''}>MEDIUM</option>
+                      <option value="HARD" ${item.difficulty === 'HARD' ? 'selected' : ''}>HARD</option>
+                    </select>
+                    <input type="number" class="py-1 px-2 rounded bg-purple-950/50 border border-purple-700/40 text-xs text-toxicLime font-mono w-20" value="${item.baseScore}" onchange="app.draftQuiz.questions[${idx}].baseScore = Number(this.value)">
+                    <button onclick="app.draftQuiz.questions.splice(${idx},1); app.render();" class="text-xs text-crimson hover:underline">Удалить</button>
+                  </div>
+                </div>
+
+                <input class="w-full py-2 px-3 rounded-lg bg-purple-950/40 border border-purple-700/40 text-white text-xs sm:text-sm font-semibold" value="${item.text}" onchange="app.draftQuiz.questions[${idx}].text = this.value">
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  ${item.options.map((opt, oIdx) => `
+                    <div class="flex items-center gap-2 p-1.5 rounded-xl border ${item.correct === oIdx ? 'border-toxicLime bg-toxicLime/10' : 'border-purple-800/40 bg-purple-950/20'}">
+                      <button type="button" onclick="app.draftQuiz.questions[${idx}].correct = ${oIdx}; app.render();"
+                        class="w-7 h-7 rounded-lg font-mono font-black text-xs shrink-0 ${item.correct === oIdx ? 'bg-toxicLime text-black' : 'bg-purple-900/60 text-gray-300'}">
+                        ${['A', 'B', 'C', 'D'][oIdx]} ${item.correct === oIdx ? '✓' : ''}
+                      </button>
+                      <input class="w-full bg-transparent text-white text-xs focus:outline-none"
+                        value="${opt}" onchange="app.draftQuiz.questions[${idx}].options[${oIdx}] = this.value">
+                    </div>
+                  `).join('')}
+                </div>
+
+                <!-- Выбор мема из выпадающего списка или своего URL -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                  <div class="flex gap-1">
+                    <select class="py-1 px-2 rounded-lg bg-purple-950/50 border border-purple-800/40 text-[11px] text-toxicLime"
+                            onchange="app.draftQuiz.questions[${idx}].memeSuccess = this.value; app.render();">
+                      ${MEME_CATALOG.win.map(m => `<option value="${m.url}" ${item.memeSuccess === m.url ? 'selected' : ''}>🏆 ${m.name}</option>`).join('')}
+                    </select>
+                    <input class="flex-1 py-1 px-2 rounded-lg bg-purple-950/30 border border-purple-800/30 text-[11px] text-gray-300" placeholder="Или свой URL мема победы" value="${item.memeSuccess || ''}" onchange="app.draftQuiz.questions[${idx}].memeSuccess = this.value">
+                  </div>
+                  <div class="flex gap-1">
+                    <select class="py-1 px-2 rounded-lg bg-purple-950/50 border border-purple-800/40 text-[11px] text-crimson"
+                            onchange="app.draftQuiz.questions[${idx}].memeFail = this.value; app.render();">
+                      ${MEME_CATALOG.fail.map(m => `<option value="${m.url}" ${item.memeFail === m.url ? 'selected' : ''}>💀 ${m.name}</option>`).join('')}
+                    </select>
+                    <input class="flex-1 py-1 px-2 rounded-lg bg-purple-950/30 border border-purple-800/30 text-[11px] text-gray-300" placeholder="Или свой URL мема фейла" value="${item.memeFail || ''}" onchange="app.draftQuiz.questions[${idx}].memeFail = this.value">
+                  </div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    if (this.view === 'player' && !this.room) {
+      main.innerHTML = `
+        <div class="glass-panel rounded-3xl p-8 text-center max-w-md mx-auto">
+          <div class="text-4xl mb-3 animate-bounce">${this.user?.avatar || '🐉'}</div>
+          <h2 class="text-xl font-black font-display text-white mb-2">${this.netStatus}</h2>
+          <p class="text-xs text-gray-400 mb-5">Проверь 4-значный PIN на проекторе ведущего.</p>
+          <button onclick="app.leaveCurrentRoom()" class="px-5 py-2.5 rounded-xl bg-purple-900/60 text-white font-bold text-xs">← НА ГЛАВНУЮ</button>
+        </div>
+      `;
+      return;
+    }
+
+    // ================= 4. ИГРОВАЯ АРЕНА (БЕЗ МОРГАНИЯ ВОПРОСА + ПОДИУМ 3D + НЕОБРЕЗАННЫЕ МЕМЫ) =================
+    if ((this.view === 'host' || this.view === 'player') && this.room) {
+      const r = this.room;
+      this.ensureQuizTheme(r.quiz);
+      this.applyRoomThemeColors(r.quiz.theme);
+
+      const myP = this.getMyPlayer();
+      const ps = this.pState;
+      const currentQ = ps.cardIdx !== null ? r.quiz.questions[ps.cardIdx] : null;
+      const lockedPerks = this.getUsedPerksList(r.pin, this.localPlayerId);
+
+      const rk = 'pa_roul_' + r.pin + '_' + this.localPlayerId;
+      if (myP && !sessionStorage.getItem(rk)) {
+        sessionStorage.setItem(rk, '1');
+        setTimeout(() => this.spinRoulette((myP.perks || []).slice(0, 2)), 200);
+      }
+
+      const sortedPlayers = [...r.players].sort((a, b) => b.score - a.score);
+
+      main.innerHTML = `
+        <!-- ВЕРХНИЙ БИЛБОРД И ТАБЛО ОЧКОВ -->
+        <div class="glass-panel rounded-2xl sm:rounded-3xl p-3 sm:p-5 mb-3.5 border-2 theme-neon-border">
+          <div class="flex flex-wrap justify-between items-center gap-2 pb-2.5 mb-2.5 border-b border-purple-800/40">
+            <div class="min-w-0">
+              <div class="text-[10px] font-mono theme-neon-text font-bold uppercase truncate">${r.quiz.theme.billboardTitle}</div>
+              <div id="liveBannerText" class="text-[11px] text-gray-300 truncate">${r.lastEventBanner || r.quiz.theme.billboardSub}</div>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+              <span class="px-2.5 py-1 rounded-xl bg-obsidian border theme-neon-border font-mono font-black text-sm sm:text-lg text-toxicLime">PIN: ${r.pin}</span>
+              ${this.view === 'host' ? `<div id="localQrContainer" class="p-1 bg-white rounded-lg hidden sm:block"></div>` : ''}
+            </div>
+          </div>
+
+          ${this.isHost ? `
+            <div class="flex flex-wrap gap-1.5 mb-2.5">
+              <button onclick="app.addBot()" class="px-2.5 py-1 rounded-xl bg-purple-950/70 border border-purple-500/40 text-purple-200 font-bold text-[10px]">+ Тест-бот</button>
+              <button onclick="app.room.phase='draft'; app.resetPersonalState(); sfx.stopPhonkBeat(); app.syncState(true);" class="px-2.5 py-1 rounded-xl bg-purple-950/70 border border-purple-500/40 text-purple-200 font-bold text-[10px]">🃏 Сетка</button>
+              <button onclick="app.triggerPhonkPodium()" class="px-3 py-1 rounded-xl bg-gradient-to-r from-crimson to-rose-600 text-white font-black text-[10px]">🏆 ТОП-3 ПОДИУМ</button>
+            </div>
+          ` : ''}
+
+          <!-- ГОРИЗОНТАЛЬНОЕ ТАБЛО СОПЕРНИКОВ С АВАТАРАМИ ПЕРСОНАЖЕЙ -->
+          <div id="liveScoreboardStrip" class="flex gap-2 overflow-x-auto pb-1">
+            ${sortedPlayers.map((p, rank) => `
+              <div class="min-w-[135px] sm:min-w-[155px] p-2 rounded-xl border ${p.id === myP?.id ? 'border-toxicLime bg-toxicLime/10' : 'border-purple-800/50 bg-obsidian/80'} shrink-0">
+                <div class="flex justify-between items-center text-[10px] font-bold text-white">
+                  <span class="truncate">#${rank + 1} ${p.avatar || '🐉'} ${p.name}</span>
+                  <span>${p.shield ? '🛡️' : ''}</span>
+                </div>
+                <div class="text-base sm:text-xl font-black font-mono ${p.score >= 0 ? 'text-toxicLime' : 'text-crimson'}">${p.score} <span class="text-[9px] text-gray-400">PTS</span></div>
+                <div class="text-[9px] font-mono text-purple-300 truncate">${p.statusText || `Карт: ${p.picked.length}/${r.quiz.settings.picksPerPlayer}`}</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        <!-- ================= НОВЫЙ КИБЕР-ПОДИУМ ТОП-3 С ПЕРСОНАЖАМИ И ТИТУЛАМИ ================= -->
+        ${r.phase === 'podium' ? `
+          <div class="glass-panel phonk-stage rounded-2xl sm:rounded-3xl p-4 sm:p-8 text-center">
+            <span class="text-[10px] sm:text-xs font-mono text-toxicLime uppercase tracking-widest">🔥 GRAND FINALS // ${r.quiz.title} 🔥</span>
+            <h2 class="text-2xl sm:text-5xl font-black font-display text-white my-2">ЗАЛ СЛАВЫ И ЧЕМПИОНОВ</h2>
+
+            <!-- Видео/Мем финала БЕЗ ОБРЕЗКИ (object-contain) -->
+            <div class="max-w-xs sm:max-w-md mx-auto my-3 rounded-2xl overflow-hidden border-2 theme-neon-border bg-black/80 p-1">
+              <img src="${r.quiz.phonkGif || MEME_CATALOG.win[0].url}" class="w-full h-44 sm:h-56 object-contain rounded-xl mx-auto">
+            </div>
+
+            <!-- 3D Подиум с Аватарами и Боевыми Титулами игроков -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-5 items-end max-w-3xl mx-auto my-5">
+              ${sortedPlayers[0] ? `
+                <div class="order-1 sm:order-2 p-5 rounded-3xl podium-pillar-1 flex flex-col justify-between sm:min-h-[260px] relative overflow-hidden">
+                  <div class="text-xs font-mono font-bold text-amber-300 uppercase tracking-widest">👑 ТОП-1 ЧЕМПИОН</div>
+                  <div class="text-5xl sm:text-6xl my-2 drop-shadow-[0_0_20px_rgba(234,179,8,0.8)]">${sortedPlayers[0].avatar || '🐉'}</div>
+                  <div>
+                    <div class="font-black text-white text-xl sm:text-2xl truncate">${sortedPlayers[0].name}</div>
+                    <div class="text-[10px] font-mono text-amber-300 truncate mt-0.5">${sortedPlayers[0].title || '👑 ПОВЕЛИТЕЛЬ АРЕНЫ'}</div>
+                  </div>
+                  <div class="font-mono font-black text-3xl sm:text-4xl text-toxicLime mt-2">${sortedPlayers[0].score} <span class="text-xs">PTS</span></div>
+                </div>
+              ` : ''}
+
+              ${sortedPlayers[1] ? `
+                <div class="order-2 sm:order-1 p-4 rounded-3xl podium-pillar-2 flex flex-col justify-between sm:min-h-[215px]">
+                  <div class="text-[11px] font-mono font-bold text-purple-300 uppercase">🥈 2 МЕСТО</div>
+                  <div class="text-4xl sm:text-5xl my-1.5">${sortedPlayers[1].avatar || '🥷'}</div>
+                  <div>
+                    <div class="font-black text-white text-lg truncate">${sortedPlayers[1].name}</div>
+                    <div class="text-[9px] font-mono text-purple-300 truncate">${sortedPlayers[1].title || '⚡ МАСТЕР АРЕНЫ'}</div>
+                  </div>
+                  <div class="font-mono font-black text-2xl text-purple-200 mt-1.5">${sortedPlayers[1].score} <span class="text-xs">PTS</span></div>
+                </div>
+              ` : ''}
+
+              ${sortedPlayers[2] ? `
+                <div class="order-3 p-4 rounded-3xl podium-pillar-3 flex flex-col justify-between sm:min-h-[195px]">
+                  <div class="text-[11px] font-mono font-bold text-toxicLime uppercase">🥉 3 МЕСТО</div>
+                  <div class="text-4xl sm:text-5xl my-1.5">${sortedPlayers[2].avatar || '⚡'}</div>
+                  <div>
+                    <div class="font-black text-white text-base truncate">${sortedPlayers[2].name}</div>
+                    <div class="text-[9px] font-mono text-toxicLime truncate">${sortedPlayers[2].title || '🔥 ВОИН АРЕНЫ'}</div>
+                  </div>
+                  <div class="font-mono font-black text-xl text-toxicLime mt-1.5">${sortedPlayers[2].score} <span class="text-xs">PTS</span></div>
+                </div>
+              ` : ''}
+            </div>
+
+            <div class="flex flex-wrap justify-center gap-2.5 mt-4">
+              <button onclick="sfx.startPhonkBeat()" class="px-5 py-2.5 rounded-xl cta-lime-glow text-gray-950 font-black text-xs">🔊 Врубить Phonk</button>
+              <button onclick="sfx.stopPhonkBeat()" class="px-4 py-2.5 rounded-xl bg-purple-950 border border-purple-500/40 text-white font-bold text-xs">🔇 Стоп звук</button>
+              <button onclick="app.leaveCurrentRoom()" class="px-5 py-2.5 rounded-xl bg-crimson text-white font-black text-xs">🚪 Завершить и выйти в меню</button>
+            </div>
+          </div>
+        ` : ''}
+
+        <!-- ЛИЧНЫЙ ИГРОВОЙ ЭКРАН -->
+        ${r.phase !== 'podium' ? `
+          ${ps.subPhase === 'grid' ? `
+            <div class="glass-panel rounded-2xl sm:rounded-3xl p-3.5 sm:p-6">
+              <div class="flex flex-wrap justify-between items-center gap-2 mb-3">
+                <div>
+                  <h3 class="text-sm sm:text-xl font-black font-display text-white">ВЫБЕРИ КАРТУ И ОТВЕЧАЙ БЕЗ ОЧЕРЕДИ!</h3>
+                  <p class="text-[11px] text-purple-300">Твои карты: <b>${myP?.picked.length || 0}/${r.quiz.settings.picksPerPlayer}</b></p>
+                </div>
+                <span class="px-2.5 py-1 rounded-full bg-purple-950 border border-purple-500/40 font-mono text-[10px] text-toxicLime">
+                  Свободно: ${r.quiz.questions.filter(x => !x.answered).length}/${r.quiz.questions.length}
+                </span>
+              </div>
+
+              <div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-2 max-h-[390px] overflow-y-auto pr-1">
+                ${r.quiz.questions.map((card, idx) => {
+                  const isMine = card.ownerId === myP?.id;
+                  const stateClass = card.answered ? 'answered' : (isMine ? 'owned-me' : (card.ownerId ? 'owned-other' : ''));
+                  return `
+                    <div class="draft-card ${stateClass}" onclick="app.clickCardOnGrid(${idx})">
+                      <div class="font-mono font-black text-sm sm:text-base text-white">#${idx + 1}</div>
+                      ${card.ownerName ? `<div class="mt-0.5 px-1.5 py-0.5 rounded-full ${isMine ? 'bg-toxicLime text-gray-950' : 'theme-neon-bg text-white'} font-extrabold text-[8px] truncate max-w-[92%]">${card.ownerName}</div>` : ''}
+                      ${!card.answered && (!card.ownerId || isMine) ? `<div class="text-[8px] font-mono text-toxicLime mt-0.5">▶</div>` : ''}
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+          ` : ''}
+
+          ${ps.subPhase === 'wager' && currentQ ? `
+            <div class="glass-panel rounded-2xl sm:rounded-3xl p-4 sm:p-10 text-center">
+              <span class="text-xs font-mono text-toxicLime uppercase">КАРТА #${ps.cardIdx + 1} // ${currentQ.category}</span>
+              <h2 class="text-xl sm:text-4xl font-black font-display text-white my-2">
+                НА КОНУ ДО <span class="text-toxicLime">${currentQ.baseScore * Math.max(...r.quiz.settings.blitz.map(b => b.mult))} PTS</span>
+              </h2>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-w-xl mx-auto mt-4">
+                <button onclick="app.startPersonalQuestion(1, ${r.quiz.settings.defaultTimerSec})"
+                  class="py-3.5 px-4 rounded-2xl bg-purple-950/80 hover:bg-purple-900 border border-purple-500/40 text-white font-bold text-xs sm:text-sm">
+                  ⏱ ${r.quiz.settings.defaultTimerSec} СЕК — СТАНДАРТ x1 (+${currentQ.baseScore} PTS)
+                </button>
+                ${r.quiz.settings.blitz.map(b => `
+                  <button onclick="app.startPersonalQuestion(${b.mult}, ${b.sec})"
+                    class="py-3.5 px-4 rounded-2xl bg-gradient-to-r from-crimson to-rose-600 text-white font-black text-xs sm:text-sm">
+                    🔥 ${b.sec} СЕК — БЛИЦ x${b.mult} (+${currentQ.baseScore * b.mult} PTS)
+                  </button>
+                `).join('')}
+              </div>
+              <button onclick="app.pState.subPhase='grid'; app.render();" class="mt-4 text-xs font-mono text-gray-400 underline">← Назад к сетке</button>
+            </div>
+          ` : ''}
+
+          <!-- КАРТОЧКА ВОПРОСА (БЕЗ АНИМАЦИИ ПЕРЕРИСОВКИ — СТОИТ МОНОЛИТНО И НЕ МОРГАЕТ!) -->
+          ${ps.subPhase === 'question' && currentQ ? `
+            <div class="glass-panel ${ps.multiplier > 1 ? 'blitz-arena' : ''} rounded-2xl sm:rounded-3xl p-4 sm:p-8">
+              <div class="flex justify-between items-center mb-3">
+                <span class="px-2.5 py-1 rounded-full bg-toxicLime/20 border border-toxicLime text-toxicLime font-mono text-xs font-bold">
+                  КАРТА #${ps.cardIdx + 1} • x${ps.multiplier}
+                </span>
+                <div id="liveQuestionTimer" class="font-mono font-black text-3xl sm:text-5xl transition-transform ${ps.timer <= 5 ? 'text-crimson scale-110' : 'text-toxicLime'}">${ps.timer}s</div>
+              </div>
+              <h2 class="text-base sm:text-2xl font-black text-white mb-4 leading-snug">${currentQ.text}</h2>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                ${currentQ.options.map((opt, oIdx) => {
+                  const hidden = ps.hiddenOptions.includes(oIdx);
+                  const isOracle = ps.oracleAnswer === oIdx;
+                  return `
+                    <button ${hidden ? 'disabled' : ''}
+                      onclick="app.submitPersonalAnswer(${oIdx})"
+                      class="p-3.5 sm:p-4 rounded-2xl bg-obsidian/90 hover:bg-purple-950/70 border-2 ${isOracle ? 'border-toxicLime' : 'border-purple-800/60 hover:border-toxicLime'} text-left flex items-center gap-3 transition-all ${hidden ? 'opacity-15 pointer-events-none' : ''}">
+                      <span class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-purple-900/60 flex items-center justify-center font-mono font-black text-toxicLime shrink-0 text-xs sm:text-sm">${['A', 'B', 'C', 'D'][oIdx]}</span>
+                      <span class="text-xs sm:text-base font-bold text-white leading-snug">${opt} ${isOracle ? '👁️' : ''}</span>
+                    </button>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+          ` : ''}
+
+          <!-- МЕМ-РЕЗУЛЬТАТ БЕЗ ОБРЕЗКИ НА ТЕЛЕФОНЕ И ПК (object-contain) -->
+          ${ps.subPhase === 'meme' && ps.lastOutcome ? `
+            <div class="glass-panel rounded-2xl sm:rounded-3xl p-4 sm:p-8 text-center">
+              <span class="px-3 py-0.5 rounded-full bg-purple-950 border border-purple-500/40 font-mono text-[10px] text-amber-300 uppercase">${ps.lastOutcome.tag || 'VERDICT'}</span>
+              <h2 class="text-xl sm:text-4xl font-black font-display ${ps.lastOutcome.ok ? 'text-toxicLime' : 'text-crimson'} mt-2 mb-1">${ps.lastOutcome.headline}</h2>
+              <p class="text-white text-xs sm:text-base mb-4">${ps.lastOutcome.sub}</p>
+
+              <!-- Контейнер мема с object-contain: мем виден ПРЯМО ЦЕЛИКОМ без обрезанных краев! -->
+              <div class="max-w-sm sm:max-w-lg mx-auto mb-5 rounded-2xl overflow-hidden border-2 theme-neon-border bg-black/90 p-2 shadow-2xl">
+                <img src="${ps.lastOutcome.gif}" class="w-full max-h-[260px] sm:max-h-[340px] object-contain mx-auto rounded-xl">
+              </div>
+
+              <div class="flex flex-wrap justify-center gap-2">
+                <button onclick="app.pState.subPhase='grid'; app.render();" class="px-6 py-3.5 rounded-2xl cta-lime-glow text-gray-950 font-black text-xs sm:text-sm">
+                  🃏 ВЫБРАТЬ СЛЕДУЮЩУЮ КАРТУ →
+                </button>
+                ${this.isHost ? `
+                  <button onclick="app.triggerPhonkPodium()" class="px-4 py-3.5 rounded-2xl bg-crimson text-white font-black text-xs sm:text-sm">
+                    🏆 ВКЛЮЧИТЬ ТОП-3 ПОДИУМ
+                  </button>
+                ` : ''}
+              </div>
+            </div>
+          ` : ''}
+
+          <!-- ПАНЕЛЬ СУПЕРСПОСОБНОСТЕЙ -->
+          <div class="glass-panel rounded-2xl sm:rounded-3xl p-3.5 sm:p-4 mt-3.5">
+            <div class="flex justify-between items-center mb-2">
+              <span class="text-[10px] sm:text-[11px] font-mono font-bold text-toxicLime uppercase">🎲 СПОСОБНОСТИ (${myP?.avatar || '🐉'} ${myP?.name || ''})</span>
+              <span class="text-[9px] sm:text-[10px] font-mono text-purple-300">Строго 1 раз за игру</span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              ${this.perksCatalog.filter(pk => (myP?.perks || []).includes(pk.id)).map(pk => {
+                const used = (myP?.usedPerks || []).includes(pk.id) || lockedPerks.includes(pk.id);
+                return `
+                  <button ${used ? 'disabled' : ''}
+                    onclick="app.usePersonalPerk('${pk.id}')"
+                    class="p-2.5 sm:p-3 rounded-xl bg-obsidian/85 border ${used ? 'border-gray-800 opacity-30 cursor-not-allowed' : 'border-purple-500/40 hover:border-toxicLime'} text-left flex items-center justify-between gap-2 transition-all">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                      <span class="text-xl">${pk.icon}</span>
+                      <div class="min-w-0">
+                        <div class="font-black text-xs text-toxicLime truncate">${pk.name}</div>
+                        <div class="text-[10px] text-gray-300 truncate">${pk.desc}</div>
+                      </div>
+                    </div>
+                    <span class="text-[9px] font-mono font-bold px-2 py-0.5 rounded ${used ? 'bg-crimson/30 text-crimson' : 'bg-toxicLime/20 text-toxicLime'} shrink-0">
+                      ${used ? '🔒 ИСПОЛЬЗ.' : '1/1'}
+                    </span>
+                  </button>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        ` : ''}
+      `;
+
+      if (this.view === 'host') {
+        setTimeout(() => this.drawLocalQrCode(), 30);
+      }
+    }
+  }
+};
+
+// =========================================================================
+// 5. ИСКРЫ ДРАКОНА ПО КРАЯМ ЭКРАНА
+// =========================================================================
+(function initDragonVisuals() {
+  const canvas = document.getElementById('embersCanvas');
+  const ctx = canvas.getContext('2d');
+  let width, height;
+  const particles = [];
+
+  function resize() {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  class Ember {
+    constructor() { this.reset(); this.y = Math.random() * height; }
+    reset() {
+      const side = Math.random() > 0.5 ? 0 : 1;
+      this.x = side === 0 ? Math.random() * (width * 0.32) : width - Math.random() * (width * 0.32);
+      this.y = height + Math.random() * 40;
+      this.size = Math.random() * 2.5 + 0.8;
+      this.speedY = Math.random() * 1.4 + 0.45;
+      this.speedX = (Math.random() - 0.5) * 0.65;
+      this.alpha = Math.random() * 0.78 + 0.2;
+      this.color = Math.random() > 0.35 ? '#c084fc' : '#22c55e';
+    }
+    update() {
+      this.y -= this.speedY;
+      this.x += this.speedX;
+      this.alpha -= 0.0018;
+      if (this.y < -15 || this.alpha <= 0) this.reset();
+    }
+    draw() {
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, this.alpha);
+      ctx.fillStyle = this.color;
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = this.color;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  for (let i = 0; i < 50; i++) particles.push(new Ember());
+  function loop() {
+    ctx.clearRect(0, 0, width, height);
+    particles.forEach(p => { p.update(); p.draw(); });
+    requestAnimationFrame(loop);
+  }
+  loop();
+})();
+
+window.addEventListener('DOMContentLoaded', () => app.init());
+</script>
+</body>
+</html>
